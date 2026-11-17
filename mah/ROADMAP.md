@@ -7,34 +7,34 @@
 - [x] Protocol draft + mobile stubs
 - [x] Product docs + companion suite link (`mah-obs`)
 
-## v1 — Usable mobile cam (this push)
+## v1 — Usable mobile cam
 
-- [x] Desktop: MAH1 handshake + pairing check
-- [x] Desktop: length-prefixed **MJPEG ingest** → OBS async video (`stb_image`)
-- [x] Desktop: UDP LAN discovery (`28888`)
-- [x] Desktop: Wi‑Fi + USB-tether connection modes (same TCP path)
-- [x] Android companion: CameraX + foreground service + MAH1 MJPEG + discover
-- [x] iOS companion: AVFoundation + MAH1 MJPEG + discover (open in Xcode)
-- [x] Python test client (`mobile/tools/mah_mjpeg_test_client.py`)
+- [x] Desktop: MAH1 handshake + pairing + UDP discovery
+- [x] Desktop: MJPEG ingest → OBS async video
+- [x] Desktop: phone mic PCM → OBS audio (`mjpeg+pcm`)
+- [x] Wi‑Fi + USB-tether modes (same TCP)
+- [x] Android companion (CameraX + mic + discover)
+- [x] iOS companion sources + XcodeGen `project.yml`
+- [x] Python test client
+- [x] Starter dock + multichat help dock HTML
+- [x] First-run **MahOnboarding** Qt wizard (hooked before AutoConfig)
 - [ ] Signed Play / TestFlight builds
 - [ ] H.264 Annex-B decode path
-- [ ] Phone mic audio track
 - [ ] Native AOA / usbmux accessory tunnel
 
-## v1.5 — Onboarding
+## v1.5 — Onboarding polish
 
-- [ ] First-run **MAH Onboarding** wizard (extends OBS AutoConfig)
-  - Brand / language (Hinglish)
-  - Connect mobile camera (pairing + QR)
-  - Add YT / Twitch / Kick outputs
-  - Apply loved dock preset from `mah-obs`
-- [ ] Starter page dock (After Hours) on first launch
+- [x] Starter page dock (`mah/starter`)
+- [ ] QR pairing on wizard page
+- [ ] Apply loved dock preset from `mah-obs` automatically
+- [ ] Hinglish string table
 
 ## v2 — Multistream + Multichat native
 
 - [ ] In-tree Multistream dock (obs-multi-rtmp branded)
 - [ ] Multichat dock: Twitch + YouTube + Kick
 - [ ] “Send to selected platforms” toggles
+- [x] Interim: `mah/docks` + [mah-obs](https://github.com/msr157/mah-obs) suite
 
 ## v3 — Polish
 

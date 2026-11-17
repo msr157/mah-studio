@@ -11,5 +11,7 @@ target_sources(
     wizards/AutoConfigTestPage.hpp
     wizards/AutoConfigVideoPage.cpp
     wizards/AutoConfigVideoPage.hpp
+    wizards/MahOnboarding.cpp
+    wizards/MahOnboarding.hpp
     wizards/TestMode.hpp
 )

@@ -1,0 +1,20 @@
+# XcodeGen spec — `brew install xcodegen && xcodegen` inside mobile/ios
+name: MAHCam
+options:
+  bundleIdPrefix: in.mayankafterhours
+  deploymentTarget:
+    iOS: "16.0"
+settings:
+  base:
+    PRODUCT_BUNDLE_IDENTIFIER: in.mayankafterhours.mahcam
+    INFOPLIST_FILE: MAHCam/Info.plist
+    TARGETED_DEVICE_FAMILY: "1,2"
+targets:
+  MAHCam:
+    type: application
+    platform: iOS
+    sources:
+      - MAHCam
+    settings:
+      base:
+        PRODUCT_NAME: MAH Cam

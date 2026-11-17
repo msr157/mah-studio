@@ -653,6 +653,7 @@ private slots:
 	void on_toggleStatusBar_toggled(bool visible);
 
 	void on_autoConfigure_triggered();
+	void on_mahOnboarding_triggered();
 	void on_stats_triggered();
 	void on_idianPlayground_triggered();
 

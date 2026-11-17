@@ -8,6 +8,9 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.graphics.ImageFormat
+import android.media.AudioFormat
+import android.media.AudioRecord
+import android.media.MediaRecorder
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
@@ -46,7 +49,8 @@ class StreamService : Service(), LifecycleOwner {
     private val streaming = AtomicBoolean(false)
 
     private var protocol: MahProtocol? = null
-    private var statusJob: Job? = null
+    private var audioRecord: AudioRecord? = null
+    private var audioJob: Job? = null
     private var lastSentNs = 0L
     private var targetFps = 15
     private var jpegQuality = 70
@@ -83,17 +87,53 @@ class StreamService : Service(), LifecycleOwner {
     private suspend fun startStream(host: String, port: Int, pairing: String) {
         if (!streaming.compareAndSet(false, true)) return
         try {
-            val client = MahProtocol(host, port, pairing, width, height)
+            val client = MahProtocol(host, port, pairing, width, height, withAudio = true)
             client.connect()
             protocol = client
-            broadcastStatus("Connected — streaming MJPEG")
+            broadcastStatus("Connected — video + mic")
             updateNotification("Streaming to $host:$port")
+            startMic()
             bindCamera()
         } catch (e: Exception) {
             Log.e(TAG, "connect failed", e)
             broadcastStatus("Error: ${e.message}")
             streaming.set(false)
             stopSelf()
+        }
+    }
+
+    private fun startMic() {
+        val rate = 48000
+        val channel = AudioFormat.CHANNEL_IN_MONO
+        val encoding = AudioFormat.ENCODING_PCM_16BIT
+        val minBuf = AudioRecord.getMinBufferSize(rate, channel, encoding)
+        if (minBuf <= 0) return
+        val bufSize = minBuf * 2
+        val recorder = try {
+            AudioRecord(MediaRecorder.AudioSource.VOICE_COMMUNICATION, rate, channel, encoding, bufSize)
+        } catch (e: SecurityException) {
+            Log.w(TAG, "mic permission missing", e)
+            return
+        }
+        if (recorder.state != AudioRecord.STATE_INITIALIZED) {
+            recorder.release()
+            return
+        }
+        audioRecord = recorder
+        recorder.startRecording()
+        audioJob = scope.launch {
+            val buf = ByteArray(bufSize)
+            while (streaming.get()) {
+                val n = recorder.read(buf, 0, buf.size)
+                if (n > 0) {
+                    try {
+                        protocol?.sendPcm(buf.copyOf(n))
+                    } catch (e: Exception) {
+                        Log.e(TAG, "audio send failed", e)
+                        break
+                    }
+                }
+            }
         }
     }
 
@@ -151,6 +191,14 @@ class StreamService : Service(), LifecycleOwner {
 
     private fun stopStream() {
         streaming.set(false)
+        audioJob?.cancel()
+        audioJob = null
+        try {
+            audioRecord?.stop()
+        } catch (_: Exception) {
+        }
+        audioRecord?.release()
+        audioRecord = null
         try {
             ProcessCameraProvider.getInstance(this).get().unbindAll()
         } catch (_: Exception) {

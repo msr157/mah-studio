@@ -1,27 +1,27 @@
-# MAH Onboarding wizard (design)
+# MAH Onboarding
 
-OBS already has `frontend/wizards/AutoConfig*`. MAH extends first-run:
+## Implemented
 
-1. **Welcome** — Mayank After Hours / MAH Studio branding  
-2. **Language** — Hinglish / English  
-3. **Mobile camera** — show pairing code + LAN IP; wait for companion `MAH1 OK`  
-4. **Destinations** — guide to Multistream dock (3 Custom RTMP targets)  
-5. **Layout** — apply loved dock preset from `mah-obs`  
-6. **Done** — open starter dock (`mah/starter/index.html`)
+`frontend/wizards/MahOnboarding.{hpp,cpp}` — Qt wizard pages:
 
-## Starter page (available now)
+1. Welcome (After Hours branding)
+2. Mobile camera (pairing / MAH Cam / USB tether)
+3. Multistream + chat (`mah-obs` + docks)
+4. Done → starter dock tip
 
-File dock URL (local):
+**First-run hook:** `OBSBasic.cpp` queues `on_mahOnboarding_triggered` when `General/MahOnboardingDone` is unset, then the normal AutoConfig wizard.
 
-```text
-file:///D:/Codes/mah-studio/mah/starter/index.html
-```
+Flag is set when the user finishes MahOnboarding.
 
-Or copy into an OBS Custom Browser Dock named **MAH Starter**.
+## Starter + help docks (file URLs)
 
-## Hook point (upstream)
+- `mah/starter/index.html`
+- `mah/docks/multichat-help.html`
 
-`frontend/widgets/OBSBasic.cpp` FirstRun currently queues `on_autoConfigure_triggered`.  
-MAH will queue `MahOnboarding` based on `General/MahOnboardingDone`.
+Add via **View → Docks → Custom Browser Docks** (or mah-obs installer).
 
-Qt implementation: `frontend/wizards/MahOnboarding*.{hpp,cpp,ui}` — next milestone after mobile cam is demoable on a built OBS binary.
+## Still polishing
+
+- QR code with `ip:port:pairing`
+- Auto-apply loved layout from mah-obs presets
+- Hinglish locale strings
