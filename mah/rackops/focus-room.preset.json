@@ -1,0 +1,24 @@
+{
+  "name": "Mayank After Hours — Focus Room",
+  "description": "24h study/music Focus Room relay when Precision Tower is online via RackOps.",
+  "preferredNode": "Precision",
+  "fallbackNode": "mainframe",
+  "services": [
+    {
+      "id": "focus-mediamtx",
+      "image": "bluenviron/mediamtx:latest",
+      "ports": ["8554:8554", "1935:1935"],
+      "notes": "RTSP/RTMP ingest for ambient loop; OBS or phone can publish."
+    },
+    {
+      "id": "focus-static-hls",
+      "notes": "Optional nginx HLS edge on mainframe Cloudflare tunnel."
+    }
+  ],
+  "obs": {
+    "scene": "Focus Room",
+    "sources": ["MAH Mobile Camera (optional)", "Browser: lo-fi visual", "Media: playlist"],
+    "multistream": ["youtube-focus", "twitch-focus"]
+  },
+  "whenOffline": "Keep last known HLS; do not auto docker compose down -v."
+}

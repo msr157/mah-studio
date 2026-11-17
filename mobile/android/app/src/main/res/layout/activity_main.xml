@@ -88,6 +88,14 @@
         </com.google.android.material.textfield.TextInputLayout>
     </LinearLayout>
 
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/useH264"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Use H.264 (lower bandwidth)"
+        android:textColor="@color/mah_muted" />
+
     <com.google.android.material.button.MaterialButton
         android:id="@+id/discover"
         style="@style/Widget.Material3.Button.OutlinedButton"

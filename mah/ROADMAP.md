@@ -2,25 +2,25 @@
 
 ## Done
 
-- [x] Fork + mobile cam (MJPEG/H.264/PCM) + discovery
-- [x] Android / iOS companions + USB tether
-- [x] MahOnboarding wizard + starter docks
-- [x] MAH Multistream (obs-multi-rtmp based)
-- [x] MAH Multichat — Twitch IRC + **YouTube Live Chat API** + **Kick Pusher read**
-- [x] Unified feed + send-to toggles (Kick send → open Kick)
-- [x] AOA: Android `AoaSession` + PC `mah/tools/mah-aoa-host` bridge
-- [x] Research plan: `mah/PLAN.md`
-- [x] Store checklist + Android CI stub
+- [x] Mobile cam MJPEG / H.264 / PCM + discovery + USB tether
+- [x] Android H.264 encode option (MediaCodec)
+- [x] Android / iOS companions + Gradle wrapper for CI
+- [x] Multistream + Multichat (Twitch / YT / Kick read)
+- [x] MahOnboarding with QR pairing + apply loved layout
+- [x] Layout presets + Apply-MahLayout.ps1
+- [x] AOA Python bridge + native header scaffold
+- [x] Installer / update-manifest stubs
+- [x] RackOps Focus Room preset JSON
+- [x] Store checklist + Android CI workflow
 
-## Next (needs you / polish)
+## Needs you
 
-- [ ] Google API key + OAuth for live YT send test
-- [ ] Play / TestFlight publish (accounts + signing)
-- [ ] Gradle wrapper JAR committed for CI assemble
-- [ ] Phone-side H.264 encode (MediaCodec)
-- [ ] QR pairing in onboarding
-- [ ] Auto-apply mah-obs layout preset
-- [ ] Kick official send if/when API exists
-- [ ] Native WinUSB AOA host (replace Python helper)
-- [ ] Signed Windows MAH installer + auto-update
-- [ ] RackOps Focus Room presets
+- [ ] Google API key / OAuth (live YT send test)
+- [ ] Play / Apple accounts + signing
+- [ ] Code-signing cert for Windows installer
+
+## Later polish
+
+- [ ] Full native WinUSB AOA binary (libusb)
+- [ ] Auto-update client wired to update-manifest
+- [ ] Deploy Focus Room via server-mcp when Precision online

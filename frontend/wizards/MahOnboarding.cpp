@@ -1,6 +1,21 @@
 #include "MahOnboarding.hpp"
 
+#include <OBSApp.hpp>
+#include <util/config-file.h>
+
+#include <QCoreApplication>
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QLabel>
+#include <QLineEdit>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QPixmap>
+#include <QPushButton>
+#include <QUrl>
+#include <QUrlQuery>
 #include <QVBoxLayout>
 #include <QWizardPage>
 
@@ -22,54 +37,164 @@ QWizardPage *makePage(const QString &title, const QString &body)
 	return page;
 }
 
+QString guessLanIp()
+{
+	/* Best-effort: leave empty — user fills from MAH Mobile Camera source. */
+	return {};
+}
+
+bool applyLovedLayoutPreset()
+{
+	const QString appDir = QCoreApplication::applicationDirPath();
+	const QStringList paths = {
+		appDir + QStringLiteral("/mah/presets/layout-loved.json"),
+		appDir + QStringLiteral("/../mah/presets/layout-loved.json"),
+		appDir + QStringLiteral("/../../mah/presets/layout-loved.json"),
+		QStringLiteral("mah/presets/layout-loved.json"),
+		QStringLiteral("D:/Codes/mah-studio/mah/presets/layout-loved.json"),
+	};
+	QByteArray raw;
+	for (const QString &p : paths) {
+		QFile f(p);
+		if (f.open(QIODevice::ReadOnly)) {
+			raw = f.readAll();
+			break;
+		}
+	}
+	if (raw.isEmpty())
+		return false;
+
+	const auto doc = QJsonDocument::fromJson(raw);
+	if (!doc.isObject())
+		return false;
+	const auto obj = doc.object();
+
+	config_t *user = App()->GetUserConfig();
+	if (!user)
+		return false;
+
+	if (obj.contains(QStringLiteral("ExtraBrowserDocks")))
+		config_set_string(user, "BasicWindow", "ExtraBrowserDocks",
+				  obj.value(QStringLiteral("ExtraBrowserDocks")).toString().toUtf8().constData());
+	if (obj.contains(QStringLiteral("DockState")))
+		config_set_string(user, "BasicWindow", "DockState",
+				  obj.value(QStringLiteral("DockState")).toString().toUtf8().constData());
+	if (obj.contains(QStringLiteral("geometry")))
+		config_set_string(user, "BasicWindow", "geometry",
+				  obj.value(QStringLiteral("geometry")).toString().toUtf8().constData());
+	config_set_bool(user, "BasicWindow", "SideDocks", true);
+	config_set_bool(user, "BasicWindow", "DocksLocked", true);
+	config_save_safe(user, "tmp", nullptr);
+	return true;
+}
+
 } // namespace
 
 MahOnboarding::MahOnboarding(QWidget *parent) : QWizard(parent)
 {
 	setWindowTitle(QStringLiteral("MAH Studio — After Hours setup"));
-	setMinimumSize(560, 420);
+	setMinimumSize(600, 480);
 	setWizardStyle(QWizard::ModernStyle);
 
 	addPage(makePage(
 		QStringLiteral("Welcome"),
 		QStringLiteral(
 			"<p style='font-size:15px'><b>Mayank After Hours</b> · MAH Studio</p>"
-			"<p>This short setup covers the pieces stock OBS leaves to plugins:</p>"
-			"<ul>"
-			"<li>Phone as camera (Wi‑Fi or USB tether)</li>"
-			"<li>YouTube + Twitch + Kick together</li>"
-			"<li>Chat docks + locked operator layout</li>"
-			"</ul>"
-			"<p>Hinglish / English — same steps. Next →</p>")));
+			"<p>Phone cam, multistream, multichat — Hinglish-friendly setup.</p>")));
 
-	addPage(makePage(
-		QStringLiteral("Mobile camera"),
+	/* Mobile + QR */
+	auto *cam = new QWizardPage();
+	cam->setTitle(QStringLiteral("Mobile camera + QR"));
+	auto *camLay = new QVBoxLayout(cam);
+	camLay->addWidget(new QLabel(
 		QStringLiteral(
-			"<p>Add source <b>MAH Mobile Camera</b>.</p>"
-			"<ol>"
-			"<li>Note the <b>LAN IP</b>, port <b>28887</b>, and <b>pairing code</b>.</li>"
-			"<li>Install <b>MAH Cam</b> on Android / iOS (<code>mobile/</code> in this repo).</li>"
-			"<li>Same Wi‑Fi <i>or</i> USB tethering → Find on LAN → Start stream.</li>"
-			"</ol>"
-			"<p>Protocol: <code>mah/PROTOCOL.md</code>. Test without a phone: "
-			"<code>mobile/tools/mah_mjpeg_test_client.py</code></p>")));
+			"<p>Add source <b>MAH Mobile Camera</b>, then paste IP / port / pairing below. "
+			"QR encodes <code>mah1://IP:PORT/PAIRING</code> for the phone.</p>"),
+		cam));
+	auto *ip = new QLineEdit(cam);
+	ip->setPlaceholderText(QStringLiteral("LAN IP (from source properties)"));
+	auto *port = new QLineEdit(cam);
+	port->setText(QStringLiteral("28887"));
+	auto *pair = new QLineEdit(cam);
+	pair->setText(QStringLiteral("MAH1"));
+	pair->setPlaceholderText(QStringLiteral("Pairing code"));
+	camLay->addWidget(ip);
+	camLay->addWidget(port);
+	camLay->addWidget(pair);
+	auto *qrLabel = new QLabel(cam);
+	qrLabel->setMinimumHeight(180);
+	qrLabel->setAlignment(Qt::AlignCenter);
+	qrLabel->setText(QStringLiteral("<i style='color:#94a3b8'>QR appears after Generate</i>"));
+	camLay->addWidget(qrLabel);
+	auto *uriLabel = new QLabel(cam);
+	uriLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+	uriLabel->setWordWrap(true);
+	camLay->addWidget(uriLabel);
+	auto *gen = new QPushButton(QStringLiteral("Generate QR"), cam);
+	camLay->addWidget(gen);
+	auto *nam = new QNetworkAccessManager(cam);
+	QObject::connect(gen, &QPushButton::clicked, cam, [=]() {
+		const QString uri = QStringLiteral("mah1://%1:%2/%3")
+					    .arg(ip->text().trimmed(), port->text().trimmed(), pair->text().trimmed());
+		uriLabel->setText(QStringLiteral("<code>%1</code>").arg(uri.toHtmlEscaped()));
+		QUrl url(QStringLiteral("https://api.qrserver.com/v1/create-qr-code/"));
+		QUrlQuery q;
+		q.addQueryItem(QStringLiteral("size"), QStringLiteral("180x180"));
+		q.addQueryItem(QStringLiteral("data"), uri);
+		url.setQuery(q);
+		qrLabel->setText(QStringLiteral("<img src=\"%1\" width=\"180\" height=\"180\"/>").arg(url.toString()));
+		/* Also fetch into pixmap for offline-ish cache after first load */
+		auto *reply = nam->get(QNetworkRequest(url));
+		QObject::connect(reply, &QNetworkReply::finished, cam, [reply, qrLabel]() {
+			reply->deleteLater();
+			if (reply->error() != QNetworkReply::NoError)
+				return;
+			QPixmap px;
+			px.loadFromData(reply->readAll());
+			if (!px.isNull())
+				qrLabel->setPixmap(px);
+		});
+	});
+	camLay->addStretch(1);
+	addPage(cam);
 
 	addPage(makePage(
 		QStringLiteral("Multistream + chat"),
 		QStringLiteral(
-			"<p>OBS <b>Settings → Stream</b> is always one destination. That is normal.</p>"
-			"<p>Open the <b>MAH Multistream</b> dock — add YouTube / Twitch / Kick Custom RTMP "
-			"targets (based on obs-multi-rtmp).</p>"
-			"<p>Chat: <b>MAH Multichat</b> dock (Twitch IRC) plus optional browser popouts for "
-			"YouTube / Kick. Then <b>Docks → Lock Docks</b>.</p>")));
+			"<p>Open <b>MAH Multistream</b> — add YT / Twitch / Kick Custom RTMP.</p>"
+			"<p>Open <b>MAH Multichat</b> — Twitch + YouTube + Kick read; send toggles.</p>"
+			"<p>Then <b>Docks → Lock Docks</b>.</p>")));
 
-	auto *done = makePage(
+	/* Layout apply */
+	auto *layoutPage = new QWizardPage();
+	layoutPage->setTitle(QStringLiteral("Loved layout"));
+	auto *ll = new QVBoxLayout(layoutPage);
+	ll->addWidget(new QLabel(
+		QStringLiteral(
+			"<p>Apply the After Hours vertical chat / operator dock preset "
+			"(from <code>mah/presets/layout-loved.json</code>). "
+			"<b>Restart OBS</b> after applying so DockState loads cleanly.</p>"),
+		layoutPage));
+	auto *applyBtn = new QPushButton(QStringLiteral("Apply loved layout + lock docks"), layoutPage);
+	auto *status = new QLabel(layoutPage);
+	ll->addWidget(applyBtn);
+	ll->addWidget(status);
+	ll->addStretch(1);
+	QObject::connect(applyBtn, &QPushButton::clicked, layoutPage, [status]() {
+		if (applyLovedLayoutPreset())
+			status->setText(QStringLiteral("<span style='color:#8dffa8'>Applied. Restart OBS to see docks settle.</span>"));
+		else
+			status->setText(QStringLiteral(
+				"<span style='color:#ff8e8e'>Preset not found — copy mah/presets next to the build or run mah-obs installer.</span>"));
+	});
+	addPage(layoutPage);
+
+	addPage(makePage(
 		QStringLiteral("You're set"),
 		QStringLiteral(
-			"<p>Optional starter dock page:</p>"
-			"<p><code>mah/starter/index.html</code> → View → Docks → Custom Browser Docks.</p>"
-			"<p>Finish runs the normal OBS Auto-Configuration next (optional but useful).</p>"));
-	addPage(done);
+			"<p>Starter dock: <code>mah/starter/index.html</code></p>"
+			"<p>Finish → optional OBS Auto-Configuration.</p>")));
 
 	setOption(QWizard::NoBackButtonOnStartPage, true);
+	Q_UNUSED(guessLanIp);
 }
