@@ -1,7 +1,7 @@
 import AVFoundation
 import UIKit
 
-final class CameraStreamer: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
+final class CameraStreamer: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDataOutputSampleBufferDelegate {
     private let session = AVCaptureSession()
     private let queue = DispatchQueue(label: "mah.cam")
     private var protocolClient: MahProtocol?
@@ -13,10 +13,10 @@ final class CameraStreamer: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
         queue.async { [weak self] in
             guard let self else { return }
             do {
-                let client = MahProtocol(host: host, port: port, pairing: pairing)
+                let client = MahProtocol(host: host, port: port, pairing: pairing, withAudio: true)
                 try client.connect()
                 self.protocolClient = client
-                DispatchQueue.main.async { self.onStatus?("Connected — streaming MJPEG") }
+                DispatchQueue.main.async { self.onStatus?("Connected — video + mic") }
                 self.configureSession()
                 self.session.startRunning()
             } catch {
@@ -38,20 +38,36 @@ final class CameraStreamer: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
         session.beginConfiguration()
         session.sessionPreset = .hd1280x720
 
-        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
-              let input = try? AVCaptureDeviceInput(device: device),
-              session.canAddInput(input) else { return }
-        session.addInput(input)
+        if let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
+           let input = try? AVCaptureDeviceInput(device: device),
+           session.canAddInput(input) {
+            session.addInput(input)
+        }
 
-        let output = AVCaptureVideoDataOutput()
-        output.alwaysDiscardsLateVideoFrames = true
-        output.setSampleBufferDelegate(self, queue: queue)
-        guard session.canAddOutput(output) else { return }
-        session.addOutput(output)
+        if let mic = AVCaptureDevice.default(for: .audio),
+           let micInput = try? AVCaptureDeviceInput(device: mic),
+           session.canAddInput(micInput) {
+            session.addInput(micInput)
+        }
+
+        let video = AVCaptureVideoDataOutput()
+        video.alwaysDiscardsLateVideoFrames = true
+        video.setSampleBufferDelegate(self, queue: queue)
+        if session.canAddOutput(video) { session.addOutput(video) }
+
+        let audio = AVCaptureAudioDataOutput()
+        audio.setSampleBufferDelegate(self, queue: queue)
+        if session.canAddOutput(audio) { session.addOutput(audio) }
+
         session.commitConfiguration()
     }
 
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        if output is AVCaptureAudioDataOutput {
+            sendAudio(sampleBuffer)
+            return
+        }
+
         let now = CFAbsoluteTimeGetCurrent()
         if now - lastSent < 1.0 / targetFPS { return }
         lastSent = now
@@ -65,6 +81,21 @@ final class CameraStreamer: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
 
         do {
             try protocolClient?.sendJPEG(jpeg)
+        } catch {
+            DispatchQueue.main.async { self.onStatus?("Disconnected: \(error.localizedDescription)") }
+            stop()
+        }
+    }
+
+    private func sendAudio(_ sampleBuffer: CMSampleBuffer) {
+        guard let block = CMSampleBufferGetDataBuffer(sampleBuffer) else { return }
+        var length = 0
+        var dataPointer: UnsafeMutablePointer<Int8>?
+        CMBlockBufferGetDataPointer(block, atOffset: 0, lengthAtOffsetOut: nil, totalLengthOut: &length, dataPointerOut: &dataPointer)
+        guard let dataPointer, length > 0 else { return }
+        let data = Data(bytes: dataPointer, count: length)
+        do {
+            try protocolClient?.sendPCM(data)
         } catch {
             DispatchQueue.main.async { self.onStatus?("Disconnected: \(error.localizedDescription)") }
             stop()

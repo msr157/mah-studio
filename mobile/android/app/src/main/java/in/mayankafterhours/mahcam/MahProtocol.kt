@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets
 
 /**
  * MAH1 client — see mah/PROTOCOL.md in mah-studio.
+ * Media: [u8 'V'|'A'][u32be len][payload]
  */
 class MahProtocol(
     private val host: String,
@@ -20,11 +21,11 @@ class MahProtocol(
     private val pairing: String,
     private val width: Int,
     private val height: Int,
+    private val withAudio: Boolean = true,
 ) : AutoCloseable {
 
     private var socket: Socket? = null
     private var out: BufferedOutputStream? = null
-    private var input: BufferedInputStream? = null
 
     fun connect(timeoutMs: Int = 8_000) {
         val s = Socket()
@@ -34,7 +35,8 @@ class MahProtocol(
         val o = BufferedOutputStream(s.getOutputStream())
         val i = BufferedInputStream(s.getInputStream())
 
-        val hello = "MAH1 $pairing ${width}x${height} mjpeg\n"
+        val codec = if (withAudio) "mjpeg+pcm" else "mjpeg"
+        val hello = "MAH1 $pairing ${width}x${height} $codec\n"
         o.write(hello.toByteArray(StandardCharsets.UTF_8))
         o.flush()
 
@@ -46,14 +48,18 @@ class MahProtocol(
 
         socket = s
         out = o
-        input = i
     }
 
-    fun sendJpeg(jpeg: ByteArray) {
+    fun sendJpeg(jpeg: ByteArray) = sendTyped('V'.code, jpeg)
+
+    fun sendPcm(pcm: ByteArray) = sendTyped('A'.code, pcm)
+
+    private fun sendTyped(type: Int, payload: ByteArray) {
         val o = out ?: error("Not connected")
-        val header = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(jpeg.size).array()
+        o.write(type)
+        val header = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(payload.size).array()
         o.write(header)
-        o.write(jpeg)
+        o.write(payload)
         o.flush()
     }
 
@@ -68,7 +74,6 @@ class MahProtocol(
         }
         socket = null
         out = null
-        input = null
     }
 
     companion object {
@@ -76,7 +81,6 @@ class MahProtocol(
 
         data class HostInfo(val ip: String, val port: Int, val pairing: String)
 
-        /** UDP broadcast discover — desktop replies MAH1 HOST ip port pairing */
         fun discover(timeoutMs: Int = 2500): HostInfo? {
             DatagramSocket().use { sock ->
                 sock.broadcast = true
@@ -94,7 +98,6 @@ class MahProtocol(
                 val resp = DatagramPacket(buf, buf.size)
                 sock.receive(resp)
                 val text = String(resp.data, 0, resp.length, StandardCharsets.UTF_8).trim()
-                // MAH1 HOST <ip> <port> <pairing>
                 val parts = text.split(Regex("\\s+"))
                 if (parts.size >= 5 && parts[0] == "MAH1" && parts[1] == "HOST") {
                     return HostInfo(parts[2], parts[3].toInt(), parts[4])

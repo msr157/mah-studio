@@ -6,6 +6,8 @@
 	<string>MAH Cam</string>
 	<key>NSCameraUsageDescription</key>
 	<string>MAH Cam streams your camera to MAH Studio / OBS on your computer.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>MAH Cam sends your microphone to MAH Studio along with the camera.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>MAH Cam finds and connects to MAH Studio on your local network.</string>
 	<key>NSBonjourServices</key>

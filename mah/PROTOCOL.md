@@ -1,4 +1,4 @@
-# MAH Mobile Camera protocol (v1)
+# MAH Mobile Camera protocol (v1.1)
 
 Companion app (Android / iOS / test client) → MAH Studio `mah_mobile_cam` source.
 
@@ -7,8 +7,8 @@ Companion app (Android / iOS / test client) → MAH Studio `mah_mobile_cam` sour
 | Mode | Path |
 |---|---|
 | Wi‑Fi | TCP to desktop LAN IP, default port `28887` |
-| USB tether | Same TCP framing — enable USB tethering; phone and PC share a link-local / tether subnet; enter the PC IP shown in the source |
-| USB AOA / usbmux | Planned (v1.x) — same framing over accessory / port-forward |
+| USB tether | Same TCP — enable USB tethering; use the PC IP shown in the source |
+| USB AOA / usbmux | Planned — same framing over accessory / port-forward |
 
 ## Discovery (optional)
 
@@ -26,59 +26,56 @@ MAH1 HOST <ip> <tcp-port> <pairing>\n
 
 ## Handshake
 
-Client connects (TCP) and sends one UTF-8 line:
-
 ```text
 MAH1 <pairing> <width>x<height> <codec>\n
 ```
 
+Codecs:
+
+| Codec | Meaning |
+|---|---|
+| `mjpeg` | Video only |
+| `mjpeg+pcm` | Video + mic (PCM s16le mono 48 kHz) |
+
 Example:
 
 ```text
-MAH1 MAH1 1280x720 mjpeg\n
+MAH1 MAH1 1280x720 mjpeg+pcm\n
 ```
 
-Server replies:
+Server:
 
 ```text
 MAH1 OK\n
 ```
 
-or
+or `MAH1 ERR <reason>` (`bad-handshake`, `bad-pairing`, `codec-unsupported`).
+
+## Media (v1.1)
+
+Typed frames (preferred):
 
 ```text
-MAH1 ERR <reason>\n
+[uint8 type][uint32_be length][payload]
 ```
 
-Reasons: `bad-handshake`, `bad-pairing`, `codec-unsupported`.
+| type | payload |
+|---|---|
+| `'V'` | JPEG bytes |
+| `'A'` | PCM s16le mono @ 48000 Hz |
 
-## Media (v1)
+Legacy v1 (length-prefixed JPEG with no type byte) is still accepted by the desktop plugin.
 
-### `mjpeg` (required)
+### `h264` (reserved)
 
-Repeated:
-
-```text
-[uint32_be length][jpeg bytes]
-```
-
-Desktop decodes JPEG → BGRA → OBS async video.
-
-### `h264` (v1.1 — reserved)
-
-```text
-[uint32_be length][annex-b access unit]
-```
-
-Not accepted by desktop until decoder lands.
+Annex-B access units — not accepted until decoder lands.
 
 ## Security
 
-- Pairing code required (shown in source properties; regenerate button)
-- LAN is trusted-ish; v2 adds optional TLS / QR token
+- Pairing code required (source properties; regenerate button)
+- LAN trusted-ish; v2 optional TLS / QR token
 
 ## Non-goals
 
 - DRM camera bypass
-- Silent background capture without OS permission UI
-- Replacing every virtual-webcam driver edge case on day one
+- Silent capture without OS permission UI

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MAH Multichat Help</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:#0c1014; --ink:#eee8dc; --muted:#9aa19a; --line:rgba(238,232,220,.12); --amber:#e5b875;
+      --twitch:#bf94ff; --youtube:#ff6b6b; --kick:#53fc18; --ok:#8dffa8; --bad:#ff8e8e;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:Outfit,system-ui,sans-serif}
+    main{padding:14px;display:grid;gap:10px}
+    .brand{font-size:11px;letter-spacing:.22em;color:var(--muted)}
+    .brand b{color:var(--amber);font-weight:500}
+    h1{margin:4px 0 0;font-size:20px;font-weight:500}
+    p{margin:0;color:var(--muted);font-size:13px;line-height:1.45}
+    .card{border:1px solid var(--line);border-radius:12px;padding:12px;background:#141a20;display:grid;gap:6px}
+    .ok{color:var(--ok)} .bad{color:var(--bad)}
+    .tw{color:var(--twitch)} .yt{color:var(--youtube)} .kk{color:var(--kick)}
+    b.ink{color:var(--ink)}
+    code{font-size:12px;color:var(--amber)}
+  </style>
+</head>
+<body>
+  <main>
+    <div>
+      <div class="brand">MAYANK <b>AFTER HOURS</b></div>
+      <h1>Multichat help</h1>
+      <p>Right-side tabs = real chats. This panel is FAQ + popout URLs.</p>
+    </div>
+
+    <div class="card">
+      <p class="ok">Suggested Custom Browser Dock URLs</p>
+      <p><b class="tw">Twitch</b> popout: <code>https://www.twitch.tv/popout/CHANNEL/chat?popout=</code></p>
+      <p><b class="yt">YouTube</b> live chat: use Studio → live chat popout while live</p>
+      <p><b class="kk">Kick</b> chatroom popout (read-only in OBS): Kick’s official chat popout URL</p>
+    </div>
+
+    <div class="card">
+      <p class="ok">Lock this UI</p>
+      <p>1. <b class="ink">Docks → Lock Docks</b></p>
+      <p>2. Quit OBS normally so layout saves</p>
+      <p>3. Or run the <b class="ink">mah-obs</b> installer presets</p>
+    </div>
+
+    <div class="card">
+      <p class="ok">Sign-in</p>
+      <p><b class="yt">YouTube</b> + <b class="tw">Twitch</b>: right‑click dock → <b class="ink">Interact</b>. Cookies stay in OBS.</p>
+      <p><b class="kk">Kick</b>: official popout is <b class="ink">read-only</b> in OBS. Reply in Kick app/browser.</p>
+    </div>
+
+    <div class="card">
+      <p class="bad">One merged feed + send-to-all?</p>
+      <p>Not with official platform popouts. Native multichat dock is on the MAH Studio roadmap (v2).</p>
+    </div>
+
+    <div class="card">
+      <p class="ok">Stream to YouTube + Twitch + Kick</p>
+      <p>Settings → Stream = one destination (normal). Use <b class="ink">Multiple Output</b> from <b class="ink">mah-obs</b> / obs-multi-rtmp.</p>
+    </div>
+  </main>
+</body>
+</html>

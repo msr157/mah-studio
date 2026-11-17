@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Desktop test client for mah-mobile-cam (no phone required).
 
-Sends a synthetic MJPEG stream with the MAH1 handshake.
+Sends typed MAH1 frames: V=JPEG, optional A=PCM silence.
 
   python mah_mjpeg_test_client.py --host 127.0.0.1 --port 28887 --pairing MAH1
 """
@@ -31,19 +31,27 @@ def frame_jpeg(frame_i: int, w: int, h: int, quality: int = 70) -> bytes:
     return buf.getvalue()
 
 
+def send_typed(sock: socket.socket, kind: bytes, payload: bytes) -> None:
+    assert len(kind) == 1
+    sock.sendall(kind + struct.pack(">I", len(payload)) + payload)
+
+
 def main() -> None:
-    ap = argparse.ArgumentParser(description="MAH1 MJPEG test client")
+    ap = argparse.ArgumentParser(description="MAH1 MJPEG(+PCM) test client")
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=28887)
     ap.add_argument("--pairing", default="MAH1")
     ap.add_argument("--width", type=int, default=1280)
     ap.add_argument("--height", type=int, default=720)
     ap.add_argument("--fps", type=float, default=15.0)
+    ap.add_argument("--audio", action="store_true", default=True)
+    ap.add_argument("--no-audio", action="store_false", dest="audio")
     args = ap.parse_args()
 
     sock = socket.create_connection((args.host, args.port), timeout=5)
     sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-    hello = f"MAH1 {args.pairing} {args.width}x{args.height} mjpeg\n".encode()
+    codec = "mjpeg+pcm" if args.audio else "mjpeg"
+    hello = f"MAH1 {args.pairing} {args.width}x{args.height} {codec}\n".encode()
     sock.sendall(hello)
     reply = b""
     while b"\n" not in reply:
@@ -57,11 +65,15 @@ def main() -> None:
 
     i = 0
     period = 1.0 / max(args.fps, 1.0)
+    # ~20ms of silence at 48kHz mono s16
+    silence = b"\x00\x00" * 960
     try:
         while True:
             t0 = time.perf_counter()
             jpeg = frame_jpeg(i, args.width, args.height)
-            sock.sendall(struct.pack(">I", len(jpeg)) + jpeg)
+            send_typed(sock, b"V", jpeg)
+            if args.audio:
+                send_typed(sock, b"A", silence)
             i += 1
             if i % 30 == 0:
                 print(f"sent {i} frames, last jpeg={len(jpeg)} bytes")

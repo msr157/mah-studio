@@ -82,7 +82,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun ensurePermissions() {
-        val need = mutableListOf(Manifest.permission.CAMERA)
+        val need = mutableListOf(
+            Manifest.permission.CAMERA,
+            Manifest.permission.RECORD_AUDIO,
+        )
         if (Build.VERSION.SDK_INT >= 33) {
             need += Manifest.permission.POST_NOTIFICATIONS
         }

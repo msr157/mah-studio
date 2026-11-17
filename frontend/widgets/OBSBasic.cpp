@@ -1163,6 +1163,10 @@ void OBSBasic::OBSInit()
 	}
 
 	if (!first_run && !has_last_version && !Active()) {
+		const bool mah_done = config_get_bool(App()->GetUserConfig(), "General", "MahOnboardingDone");
+		if (!mah_done) {
+			QMetaObject::invokeMethod(this, &OBSBasic::on_mahOnboarding_triggered, Qt::QueuedConnection);
+		}
 		QMetaObject::invokeMethod(this, &OBSBasic::on_autoConfigure_triggered, Qt::QueuedConnection);
 	}
 

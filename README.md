@@ -1,49 +1,46 @@
 # MAH Studio
 
-**Mayank After Hours Studio** — a fork of [OBS Studio](https://github.com/obsproject/obs-studio) with creator-first modules for multistream, operator docks, onboarding, and **built-in mobile camera** (Android / iOS over Wi‑Fi or USB).
+**Mayank After Hours Studio** — fork of [OBS Studio](https://github.com/obsproject/obs-studio) with creator-first modules: multistream workflow, operator docks, first-run onboarding, and **built-in mobile camera** (Android / iOS over Wi‑Fi or USB tether).
 
-> Upstream OBS is the engine. This fork adds MAH product layers. See [`mah/`](mah/) for product docs and roadmap.
-
-## Why this fork exists
-
-Stock OBS is excellent — and intentionally generic. MAH Studio targets a specific job:
-
-1. Stream to **YouTube + Twitch + Kick** without fighting single-destination Settings  
-2. Keep a **vertical chat / operator layout** locked  
-3. Use your **phone as a camera** without depending on a separate virtual-webcam driver long-term (Iriun-class, integrated)  
-4. Ship a **startup / onboarding** path that sets this up
+Upstream OBS is the engine. MAH product layers live under [`mah/`](mah/), [`mobile/`](mobile/), and [`plugins/mah-mobile-cam/`](plugins/mah-mobile-cam/).
 
 ## Repo map
 
 | Path | Role |
 |---|---|
-| `plugins/mah-mobile-cam/` | OBS source: Wi‑Fi/USB mobile camera (v0 listen + placeholder frames) |
-| `mah/` | Product docs, protocol, onboarding design, roadmap |
-| `mobile/android`, `mobile/ios` | Companion app scaffolds |
-| Upstream tree | `frontend/`, `libobs/`, `plugins/`, … unchanged OBS core |
+| `plugins/mah-mobile-cam/` | OBS source: MAH1 MJPEG + PCM mic, LAN discovery |
+| `frontend/wizards/MahOnboarding*` | First-run setup wizard (before AutoConfig) |
+| `mah/` | Protocol, roadmap, starter + dock HTML |
+| `mobile/android` | MAH Cam Android app (Gradle) |
+| `mobile/ios` | MAH Cam iOS sources + XcodeGen spec |
+| `mobile/tools/` | Desktop MJPEG test client (no phone) |
 
-Operator installer / dock presets (companion suite): https://github.com/msr157/mah-obs
+Companion suite (docks lock + multi-rtmp installer for stock OBS): https://github.com/msr157/mah-obs
 
-## Honest status
+## Status (honest)
 
-**Usable today:** OBS fork + mobile-cam plugin skeleton + docs + `mah-obs` multistream/docks installer.  
-**Not done overnight:** full phone video ingest, App Store/Play companions, polished Qt onboarding, signed installers.
-
-That work is sequenced in [`mah/ROADMAP.md`](mah/ROADMAP.md).
+| Done on GitHub | Still later |
+|---|---|
+| MJPEG video + mic PCM over Wi‑Fi/USB tether | Play / TestFlight signed builds |
+| Android + iOS companion source | H.264 path, AOA/usbmux |
+| First-run MahOnboarding wizard | Native in-tree multistream/multichat |
+| Starter + multichat help docks | Signed MAH Windows installer |
 
 ## Quick links
 
-- Protocol: [`mah/PROTOCOL.md`](mah/PROTOCOL.md)  
-- Roadmap: [`mah/ROADMAP.md`](mah/ROADMAP.md)  
-- Onboarding design: [`mah/ONBOARDING.md`](mah/ONBOARDING.md)
+- Protocol: [`mah/PROTOCOL.md`](mah/PROTOCOL.md)
+- Roadmap: [`mah/ROADMAP.md`](mah/ROADMAP.md)
+- Docks: [`mah/docks/`](mah/docks/)
 
 ## Build
 
-Follow upstream OBS build instructions for your OS, then build this tree. `mah-mobile-cam` is registered in `plugins/CMakeLists.txt`.
+Follow upstream OBS build docs for your OS, then build this tree. `mah-mobile-cam` is registered in `plugins/CMakeLists.txt`.
+
+Without building OBS, you can still open `mobile/android` in Android Studio / `mobile/ios` via XcodeGen.
 
 ## License
 
-GPL-2.0 (same as OBS Studio). Upstream copyright retained. MAH modules are GPL-2.0 to match in-tree requirements.
+GPL-2.0 (same as OBS Studio). Upstream copyright retained.
 
 ---
 

@@ -44,6 +44,7 @@
 #include <utility/WhatsNewInfoThread.hpp>
 #endif
 #include <wizards/AutoConfig.hpp>
+#include <wizards/MahOnboarding.hpp>
 
 #include <qt-wrappers.hpp>
 
@@ -649,6 +650,16 @@ void OBSBasic::on_autoConfigure_triggered()
 	test.setModal(true);
 	test.show();
 	test.exec();
+}
+
+void OBSBasic::on_mahOnboarding_triggered()
+{
+	MahOnboarding wiz(this);
+	wiz.setModal(true);
+	wiz.show();
+	wiz.exec();
+	config_set_bool(App()->GetUserConfig(), "General", "MahOnboardingDone", true);
+	config_save_safe(App()->GetUserConfig(), "tmp", nullptr);
 }
 
 void OBSBasic::on_stats_triggered()

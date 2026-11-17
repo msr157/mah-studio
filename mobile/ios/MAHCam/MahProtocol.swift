@@ -1,6 +1,7 @@
 import Foundation
 
 /// MAH1 client — see mah/PROTOCOL.md
+/// Media: [UInt8 "V"|"A"][UInt32 BE length][payload]
 final class MahProtocol {
     static let discoverPort: UInt16 = 28888
 
@@ -17,13 +18,15 @@ final class MahProtocol {
     private let pairing: String
     private let width: Int
     private let height: Int
+    private let withAudio: Bool
 
-    init(host: String, port: Int, pairing: String, width: Int = 1280, height: Int = 720) {
+    init(host: String, port: Int, pairing: String, width: Int = 1280, height: Int = 720, withAudio: Bool = true) {
         self.host = host
         self.port = port
         self.pairing = pairing
         self.width = width
         self.height = height
+        self.withAudio = withAudio
     }
 
     func connect() throws {
@@ -38,7 +41,8 @@ final class MahProtocol {
         input.open()
         output.open()
 
-        let hello = "MAH1 \(pairing) \(width)x\(height) mjpeg\n"
+        let codec = withAudio ? "mjpeg+pcm" : "mjpeg"
+        let hello = "MAH1 \(pairing) \(width)x\(height) \(codec)\n"
         guard let data = hello.data(using: .utf8) else { throw NSError(domain: "MAH", code: 2) }
         _ = data.withUnsafeBytes { output.write($0.bindMemory(to: UInt8.self).baseAddress!, maxLength: data.count) }
 
@@ -52,12 +56,16 @@ final class MahProtocol {
         self.output = output
     }
 
-    func sendJPEG(_ jpeg: Data) throws {
+    func sendJPEG(_ jpeg: Data) throws { try sendTyped(0x56 /* V */, jpeg) }
+    func sendPCM(_ pcm: Data) throws { try sendTyped(0x41 /* A */, pcm) }
+
+    private func sendTyped(_ type: UInt8, _ payload: Data) throws {
         guard let output else { throw NSError(domain: "MAH", code: 4) }
-        var len = UInt32(jpeg.count).bigEndian
-        let header = Data(bytes: &len, count: 4)
-        _ = header.withUnsafeBytes { output.write($0.bindMemory(to: UInt8.self).baseAddress!, maxLength: 4) }
-        _ = jpeg.withUnsafeBytes { output.write($0.bindMemory(to: UInt8.self).baseAddress!, maxLength: jpeg.count) }
+        var t = type
+        _ = withUnsafeBytes(of: &t) { output.write($0.bindMemory(to: UInt8.self).baseAddress!, maxLength: 1) }
+        var len = UInt32(payload.count).bigEndian
+        _ = withUnsafeBytes(of: &len) { output.write($0.bindMemory(to: UInt8.self).baseAddress!, maxLength: 4) }
+        _ = payload.withUnsafeBytes { output.write($0.bindMemory(to: UInt8.self).baseAddress!, maxLength: payload.count) }
     }
 
     func close() {

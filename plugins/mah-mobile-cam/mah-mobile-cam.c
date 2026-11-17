@@ -9,6 +9,7 @@
 #include <util/platform.h>
 #include <util/threading.h>
 #include <media-io/video-io.h>
+#include <media-io/audio-io.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -56,6 +57,8 @@ MODULE_EXPORT const char *obs_module_description(void)
 #define MAH_DEFAULT_PORT 28887
 #define MAH_DISCOVER_PORT 28888
 #define MAH_MAX_JPEG (8 * 1024 * 1024)
+#define MAH_MAX_PCM (512 * 1024)
+#define MAH_AUDIO_RATE 48000
 
 enum mah_transport {
 	MAH_TRANSPORT_WIFI = 0,
@@ -84,6 +87,8 @@ struct mah_mobile_cam {
 
 	uint64_t frames_ok;
 	uint64_t frames_drop;
+	uint64_t audio_ok;
+	bool want_audio;
 };
 
 /* ---------- sockets helpers ---------- */
@@ -219,6 +224,22 @@ static void mah_output_placeholder(struct mah_mobile_cam *ctx, bool waiting)
 	bfree(bgra);
 }
 
+static void mah_output_pcm(struct mah_mobile_cam *ctx, const uint8_t *pcm, size_t bytes)
+{
+	if (!pcm || bytes < 2 || (bytes % 2) != 0)
+		return;
+
+	struct obs_source_audio audio = {0};
+	audio.data[0] = pcm;
+	audio.frames = (uint32_t)(bytes / 2); /* s16 mono */
+	audio.speakers = SPEAKERS_MONO;
+	audio.format = AUDIO_FORMAT_16BIT;
+	audio.samples_per_sec = MAH_AUDIO_RATE;
+	audio.timestamp = os_gettime_ns();
+	obs_source_output_audio(ctx->source, &audio);
+	ctx->audio_ok++;
+}
+
 static bool mah_decode_jpeg_to_obs(struct mah_mobile_cam *ctx, const uint8_t *jpeg, size_t jpeg_len)
 {
 	int w = 0, h = 0, comp = 0;
@@ -319,12 +340,15 @@ static bool mah_handle_client(struct mah_mobile_cam *ctx, mah_socket_t cfd)
 		return false;
 	}
 
-	if (strcmp(codec, "mjpeg") != 0 && strcmp(codec, "MJPEG") != 0) {
+	const bool codec_mjpeg = (strcmp(codec, "mjpeg") == 0 || strcmp(codec, "MJPEG") == 0);
+	const bool codec_av = (strcmp(codec, "mjpeg+pcm") == 0);
+	if (!codec_mjpeg && !codec_av) {
 		const char *err = "MAH1 ERR codec-unsupported\n";
 		mah_send_all(cfd, err, strlen(err));
-		mah_set_status(ctx, "Codec must be mjpeg (v1)");
+		mah_set_status(ctx, "Codec: mjpeg or mjpeg+pcm");
 		return false;
 	}
+	ctx->want_audio = codec_av;
 
 	unsigned rw = 0, rh = 0;
 	if (sscanf(res, "%ux%u", &rw, &rh) == 2 && rw > 0 && rh > 0) {
@@ -339,31 +363,58 @@ static bool mah_handle_client(struct mah_mobile_cam *ctx, mah_socket_t cfd)
 		return false;
 
 	ctx->connected = true;
-	mah_set_status(ctx, "Connected — receiving MJPEG");
+	mah_set_status(ctx, codec_av ? "Connected — video+mic" : "Connected — MJPEG");
 
-	uint8_t lenbuf[4];
-	uint8_t *jpeg = NULL;
-	size_t jpeg_cap = 0;
+	/*
+	 * Media frames (v1.1):
+	 *   [uint8 type 'V'|'A'][uint32_be length][payload]
+	 * Legacy v1 (length-prefixed JPEG only) still accepted: if the first
+	 * byte is not V/A, treat the next 3 bytes + this as a big-endian length.
+	 */
+	uint8_t *payload = NULL;
+	size_t payload_cap = 0;
 
 	while (ctx->running) {
-		if (!mah_recv_exact(cfd, lenbuf, 4))
+		uint8_t type = 0;
+		if (!mah_recv_exact(cfd, &type, 1))
 			break;
-		uint32_t jlen = mah_read_u32_be(lenbuf);
-		if (jlen == 0 || jlen > MAH_MAX_JPEG) {
+
+		uint32_t plen = 0;
+		if (type == 'V' || type == 'A') {
+			uint8_t lenbuf[4];
+			if (!mah_recv_exact(cfd, lenbuf, 4))
+				break;
+			plen = mah_read_u32_be(lenbuf);
+		} else {
+			/* Legacy: first length byte already read as `type`. */
+			uint8_t rest[3];
+			if (!mah_recv_exact(cfd, rest, 3))
+				break;
+			uint8_t lenbuf[4] = {type, rest[0], rest[1], rest[2]};
+			plen = mah_read_u32_be(lenbuf);
+			type = 'V';
+		}
+
+		const uint32_t max_len = (type == 'A') ? MAH_MAX_PCM : MAH_MAX_JPEG;
+		if (plen == 0 || plen > max_len) {
 			ctx->frames_drop++;
 			break;
 		}
-		if (jlen > jpeg_cap) {
-			bfree(jpeg);
-			jpeg_cap = jlen + 64 * 1024;
-			jpeg = bmalloc(jpeg_cap);
+		if (plen > payload_cap) {
+			bfree(payload);
+			payload_cap = plen + 64 * 1024;
+			payload = bmalloc(payload_cap);
 		}
-		if (!mah_recv_exact(cfd, jpeg, jlen))
+		if (!mah_recv_exact(cfd, payload, plen))
 			break;
-		mah_decode_jpeg_to_obs(ctx, jpeg, jlen);
+
+		if (type == 'A')
+			mah_output_pcm(ctx, payload, plen);
+		else
+			mah_decode_jpeg_to_obs(ctx, payload, plen);
 	}
 
-	bfree(jpeg);
+	bfree(payload);
 	ctx->connected = false;
 	mah_set_status(ctx, "Waiting for phone… %s:%d", ctx->lan_ip, ctx->port);
 	mah_output_placeholder(ctx, true);
@@ -688,8 +739,9 @@ static obs_properties_t *mah_properties(void *data)
 	char host_buf[96] = "—";
 	if (ctx) {
 		pthread_mutex_lock(&ctx->mutex);
-		snprintf(status_buf, sizeof(status_buf), "%s  (ok=%llu drop=%llu)", ctx->status,
-			 (unsigned long long)ctx->frames_ok, (unsigned long long)ctx->frames_drop);
+		snprintf(status_buf, sizeof(status_buf), "%s  (v=%llu a=%llu drop=%llu)", ctx->status,
+			 (unsigned long long)ctx->frames_ok, (unsigned long long)ctx->audio_ok,
+			 (unsigned long long)ctx->frames_drop);
 		snprintf(host_buf, sizeof(host_buf), "%s:%d", ctx->lan_ip, ctx->port);
 		pthread_mutex_unlock(&ctx->mutex);
 	}
@@ -722,7 +774,7 @@ static void mah_defaults(obs_data_t *settings)
 static struct obs_source_info mah_mobile_cam_info = {
 	.id = "mah_mobile_cam",
 	.type = OBS_SOURCE_TYPE_INPUT,
-	.output_flags = OBS_SOURCE_ASYNC_VIDEO | OBS_SOURCE_DO_NOT_DUPLICATE,
+	.output_flags = OBS_SOURCE_ASYNC_VIDEO | OBS_SOURCE_AUDIO | OBS_SOURCE_DO_NOT_DUPLICATE,
 	.get_name = mah_get_name,
 	.create = mah_create,
 	.destroy = mah_destroy,
@@ -737,7 +789,7 @@ static struct obs_source_info mah_mobile_cam_info = {
 bool obs_module_load(void)
 {
 	obs_register_source(&mah_mobile_cam_info);
-	blog(LOG_INFO, "[mah-mobile-cam] loaded — MAH1 MJPEG ingest + UDP discovery");
+	blog(LOG_INFO, "[mah-mobile-cam] loaded — MAH1 MJPEG+PCM + UDP discovery");
 	return true;
 }
 
