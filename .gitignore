@@ -12,6 +12,9 @@
 !/plugins
 !/shared
 !/test
+!/mah
+!/mobile
+!README.md
 !.cirrus.xml
 !.clang-format
 !.editorconfig
