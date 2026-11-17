@@ -3,10 +3,11 @@
 ## Done
 
 - [x] Mobile cam MJPEG / H.264 / PCM + discovery + USB tether
+- [x] **Web companion** — phone browser → Allow → WebSocket MAH1 (no store app)
 - [x] Android H.264 encode option (MediaCodec)
 - [x] Android / iOS companions + Gradle wrapper for CI
 - [x] Multistream + Multichat (Twitch / YT / Kick read)
-- [x] MahOnboarding with QR pairing + apply loved layout
+- [x] MahOnboarding QR → phone URL (`http://…:28889/?p=…`) + loved layout
 - [x] Layout presets + Apply-MahLayout.ps1
 - [x] AOA Python bridge + native header scaffold
 - [x] Installer / update-manifest stubs

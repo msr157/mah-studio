@@ -102,19 +102,23 @@ MahOnboarding::MahOnboarding(QWidget *parent) : QWizard(parent)
 			"<p style='font-size:15px'><b>Mayank After Hours</b> · MAH Studio</p>"
 			"<p>Phone cam, multistream, multichat — Hinglish-friendly setup.</p>")));
 
-	/* Mobile + QR */
+	/* Mobile — web-first: phone opens link → Allow → live */
 	auto *cam = new QWizardPage();
-	cam->setTitle(QStringLiteral("Mobile camera + QR"));
+	cam->setTitle(QStringLiteral("Phone camera (no app)"));
 	auto *camLay = new QVBoxLayout(cam);
 	camLay->addWidget(new QLabel(
 		QStringLiteral(
-			"<p>Add source <b>MAH Mobile Camera</b>, then paste IP / port / pairing below. "
-			"QR encodes <code>mah1://IP:PORT/PAIRING</code> for the phone.</p>"),
+			"<p><b>Optimistic flow:</b> Add source <b>MAH Mobile Camera</b> → "
+			"copy the <b>Phone URL</b> from properties (or generate QR below) → "
+			"open on phone (same Wi‑Fi) → <b>Allow camera</b> → you’re live.</p>"
+			"<p style='color:#94a3b8;font-size:13px'>No App Store / Play install. "
+			"Native MAH Cam remains optional for USB / H.264.</p>"),
 		cam));
 	auto *ip = new QLineEdit(cam);
 	ip->setPlaceholderText(QStringLiteral("LAN IP (from source properties)"));
 	auto *port = new QLineEdit(cam);
-	port->setText(QStringLiteral("28887"));
+	port->setText(QStringLiteral("28889"));
+	port->setPlaceholderText(QStringLiteral("Web port (default 28889)"));
 	auto *pair = new QLineEdit(cam);
 	pair->setText(QStringLiteral("MAH1"));
 	pair->setPlaceholderText(QStringLiteral("Pairing code"));
@@ -130,20 +134,21 @@ MahOnboarding::MahOnboarding(QWidget *parent) : QWizard(parent)
 	uriLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
 	uriLabel->setWordWrap(true);
 	camLay->addWidget(uriLabel);
-	auto *gen = new QPushButton(QStringLiteral("Generate QR"), cam);
+	auto *gen = new QPushButton(QStringLiteral("Generate QR for phone"), cam);
 	camLay->addWidget(gen);
 	auto *nam = new QNetworkAccessManager(cam);
 	QObject::connect(gen, &QPushButton::clicked, cam, [=]() {
-		const QString uri = QStringLiteral("mah1://%1:%2/%3")
+		const QString uri = QStringLiteral("http://%1:%2/?p=%3")
 					    .arg(ip->text().trimmed(), port->text().trimmed(), pair->text().trimmed());
-		uriLabel->setText(QStringLiteral("<code>%1</code>").arg(uri.toHtmlEscaped()));
+		uriLabel->setText(QStringLiteral("<code>%1</code><br/>"
+						 "<span style='color:#94a3b8'>Scan → Allow camera → live in OBS</span>")
+					  .arg(uri.toHtmlEscaped()));
 		QUrl url(QStringLiteral("https://api.qrserver.com/v1/create-qr-code/"));
 		QUrlQuery q;
 		q.addQueryItem(QStringLiteral("size"), QStringLiteral("180x180"));
 		q.addQueryItem(QStringLiteral("data"), uri);
 		url.setQuery(q);
 		qrLabel->setText(QStringLiteral("<img src=\"%1\" width=\"180\" height=\"180\"/>").arg(url.toString()));
-		/* Also fetch into pixmap for offline-ish cache after first load */
 		auto *reply = nam->get(QNetworkRequest(url));
 		QObject::connect(reply, &QNetworkReply::finished, cam, [reply, qrLabel]() {
 			reply->deleteLater();

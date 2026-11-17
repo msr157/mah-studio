@@ -103,7 +103,7 @@ We **cannot** publish to stores without your accounts. We **can** ship build scr
 ### Phase D — Product polish (landed in mah/v3-polish)
 
 1. [x] Phone H.264 encode option (Android MediaCodec)  
-2. [x] QR pairing in MahOnboarding (`mah1://ip:port/code`)  
+2. [x] QR pairing in MahOnboarding (`http://ip:28889/?p=code` web-first; native optional)  
 3. [x] Layout preset apply (`mah/presets` + onboarding button + PS1)  
 4. [x] Gradle wrapper + Android CI assemble  
 5. [x] Installer / update-manifest stubs  

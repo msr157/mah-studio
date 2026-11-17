@@ -12,6 +12,7 @@
 #include <media-io/audio-io.h>
 
 #include "mah-h264.h"
+#include "mah-web.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -72,6 +73,7 @@ struct mah_mobile_cam {
 
 	enum mah_transport transport;
 	int port;
+	int web_port;
 	char pairing[32];
 	uint32_t width;
 	uint32_t height;
@@ -82,6 +84,7 @@ struct mah_mobile_cam {
 	volatile bool connected;
 	char status[128];
 	char lan_ip[64];
+	void *web; /* mah_web_state* */
 
 	pthread_t listen_thread;
 	pthread_t discover_thread;
@@ -94,6 +97,9 @@ struct mah_mobile_cam {
 	bool want_h264;
 	struct mah_h264_decoder *h264;
 };
+
+static bool mah_decode_jpeg_to_obs(struct mah_mobile_cam *ctx, const uint8_t *jpeg, size_t jpeg_len);
+static void mah_output_pcm(struct mah_mobile_cam *ctx, const uint8_t *pcm, size_t bytes);
 
 /* ---------- sockets helpers ---------- */
 
@@ -128,7 +134,7 @@ static uint32_t mah_read_u32_be(const uint8_t *p)
 	return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | (uint32_t)p[3];
 }
 
-static void mah_set_status(struct mah_mobile_cam *ctx, const char *fmt, ...)
+void mah_cam_set_status(struct mah_mobile_cam *ctx, const char *fmt, ...)
 {
 	char tmp[128];
 	va_list args;
@@ -139,6 +145,78 @@ static void mah_set_status(struct mah_mobile_cam *ctx, const char *fmt, ...)
 	pthread_mutex_lock(&ctx->mutex);
 	snprintf(ctx->status, sizeof(ctx->status), "%s", tmp);
 	pthread_mutex_unlock(&ctx->mutex);
+}
+
+#define mah_set_status mah_cam_set_status
+
+void mah_ingest_jpeg(struct mah_mobile_cam *ctx, const uint8_t *jpeg, size_t len)
+{
+	if (ctx && jpeg && len)
+		mah_decode_jpeg_to_obs(ctx, jpeg, len);
+}
+
+void mah_ingest_pcm(struct mah_mobile_cam *ctx, const uint8_t *pcm, size_t len)
+{
+	if (ctx && pcm && len)
+		mah_output_pcm(ctx, pcm, len);
+}
+
+bool mah_cam_check_pairing(struct mah_mobile_cam *ctx, const char *pair)
+{
+	if (!ctx || !pair)
+		return false;
+	pthread_mutex_lock(&ctx->mutex);
+	const bool ok = (strcmp(pair, ctx->pairing) == 0);
+	pthread_mutex_unlock(&ctx->mutex);
+	return ok;
+}
+
+bool mah_cam_is_running(struct mah_mobile_cam *ctx)
+{
+	return ctx && ctx->running;
+}
+
+void mah_cam_set_connected(struct mah_mobile_cam *ctx, bool on)
+{
+	if (ctx)
+		ctx->connected = on;
+}
+
+void mah_cam_get_lan_ip(struct mah_mobile_cam *ctx, char *out, size_t cap)
+{
+	if (!out || !cap)
+		return;
+	if (!ctx) {
+		out[0] = 0;
+		return;
+	}
+	pthread_mutex_lock(&ctx->mutex);
+	snprintf(out, cap, "%s", ctx->lan_ip);
+	pthread_mutex_unlock(&ctx->mutex);
+}
+
+void mah_cam_get_pairing(struct mah_mobile_cam *ctx, char *out, size_t cap)
+{
+	if (!out || !cap)
+		return;
+	if (!ctx) {
+		out[0] = 0;
+		return;
+	}
+	pthread_mutex_lock(&ctx->mutex);
+	snprintf(out, cap, "%s", ctx->pairing);
+	pthread_mutex_unlock(&ctx->mutex);
+}
+
+void *mah_cam_web_slot(struct mah_mobile_cam *ctx)
+{
+	return ctx ? ctx->web : NULL;
+}
+
+void mah_cam_set_web_slot(struct mah_mobile_cam *ctx, void *web)
+{
+	if (ctx)
+		ctx->web = web;
 }
 
 static void mah_detect_lan_ip(struct mah_mobile_cam *ctx)
@@ -586,6 +664,8 @@ static void *mah_discover_thread(void *data)
 
 static void mah_stop(struct mah_mobile_cam *ctx)
 {
+	mah_web_stop(ctx);
+
 	if (!ctx->running)
 		return;
 	ctx->running = false;
@@ -610,6 +690,7 @@ static void mah_start(struct mah_mobile_cam *ctx)
 	mah_detect_lan_ip(ctx);
 	pthread_create(&ctx->listen_thread, NULL, mah_listen_thread, ctx);
 	pthread_create(&ctx->discover_thread, NULL, mah_discover_thread, ctx);
+	mah_web_start(ctx, ctx->web_port);
 }
 
 static const char *mah_get_name(void *unused)
@@ -645,6 +726,8 @@ static void *mah_create(obs_data_t *settings, obs_source_t *source)
 	ctx->width = 1280;
 	ctx->height = 720;
 	ctx->port = MAH_DEFAULT_PORT;
+	ctx->web_port = MAH_DEFAULT_WEB_PORT;
+	ctx->web = NULL;
 	pthread_mutex_init(&ctx->mutex, NULL);
 	snprintf(ctx->status, sizeof(ctx->status), "Starting…");
 	snprintf(ctx->pairing, sizeof(ctx->pairing), "MAH1");
@@ -673,6 +756,10 @@ static void mah_update(void *data, obs_data_t *settings)
 	if (ctx->port < 1024 || ctx->port > 65535)
 		ctx->port = MAH_DEFAULT_PORT;
 
+	ctx->web_port = (int)obs_data_get_int(settings, "web_port");
+	if (ctx->web_port < 1024 || ctx->web_port > 65535)
+		ctx->web_port = MAH_DEFAULT_WEB_PORT;
+
 	const char *pair = obs_data_get_string(settings, "pairing");
 	if (pair && *pair)
 		snprintf(ctx->pairing, sizeof(ctx->pairing), "%s", pair);
@@ -692,6 +779,11 @@ static void mah_update(void *data, obs_data_t *settings)
 		ctx->width = 1280;
 		ctx->height = 720;
 	}
+
+	mah_detect_lan_ip(ctx);
+	char phone[192];
+	snprintf(phone, sizeof(phone), "http://%s:%d/?p=%s", ctx->lan_ip, ctx->web_port, ctx->pairing);
+	obs_data_set_string(settings, "phone_url", phone);
 
 	mah_start(ctx);
 }
@@ -731,7 +823,12 @@ static bool mah_refresh_clicked(obs_properties_t *props, obs_property_t *p, void
 	if (!ctx)
 		return false;
 	mah_detect_lan_ip(ctx);
-	mah_set_status(ctx, "Listening %s:%d  code %s", ctx->lan_ip, ctx->port, ctx->pairing);
+	obs_data_t *settings = obs_source_get_settings(ctx->source);
+	char phone[192];
+	snprintf(phone, sizeof(phone), "http://%s:%d/?p=%s", ctx->lan_ip, ctx->web_port, ctx->pairing);
+	obs_data_set_string(settings, "phone_url", phone);
+	obs_data_release(settings);
+	mah_set_status(ctx, "Phone: http://%s:%d/?p=%s", ctx->lan_ip, ctx->web_port, ctx->pairing);
 	return true;
 }
 
@@ -745,8 +842,11 @@ static bool mah_regen_clicked(obs_properties_t *props, obs_property_t *p, void *
 	mah_random_pairing(ctx->pairing, sizeof(ctx->pairing));
 	obs_data_t *settings = obs_source_get_settings(ctx->source);
 	obs_data_set_string(settings, "pairing", ctx->pairing);
+	char phone[192];
+	snprintf(phone, sizeof(phone), "http://%s:%d/?p=%s", ctx->lan_ip, ctx->web_port, ctx->pairing);
+	obs_data_set_string(settings, "phone_url", phone);
 	obs_data_release(settings);
-	mah_set_status(ctx, "Listening %s:%d  code %s", ctx->lan_ip, ctx->port, ctx->pairing);
+	mah_set_status(ctx, "Phone: http://%s:%d/?p=%s", ctx->lan_ip, ctx->web_port, ctx->pairing);
 	return true;
 }
 
@@ -755,11 +855,14 @@ static obs_properties_t *mah_properties(void *data)
 	struct mah_mobile_cam *ctx = data;
 	obs_properties_t *props = obs_properties_create();
 
+	obs_properties_add_text(props, "phone_url", obs_module_text("PhoneUrl"), OBS_TEXT_INFO);
+
 	obs_property_t *t = obs_properties_add_list(props, "transport", obs_module_text("Transport"),
 						    OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 	obs_property_list_add_int(t, "Wi-Fi (LAN / hotspot)", MAH_TRANSPORT_WIFI);
 	obs_property_list_add_int(t, "USB tether (same TCP over phone network)", MAH_TRANSPORT_USB);
 
+	obs_properties_add_int(props, "web_port", obs_module_text("WebPort"), 1024, 65535, 1);
 	obs_properties_add_int(props, "port", obs_module_text("Port"), 1024, 65535, 1);
 	obs_properties_add_text(props, "pairing", obs_module_text("PairingCode"), OBS_TEXT_DEFAULT);
 
@@ -769,29 +872,13 @@ static obs_properties_t *mah_properties(void *data)
 	obs_property_list_add_string(r, "1280x720", "1280x720");
 	obs_property_list_add_string(r, "1920x1080", "1920x1080");
 
-	char status_buf[192] = "—";
-	char host_buf[96] = "—";
-	if (ctx) {
-		pthread_mutex_lock(&ctx->mutex);
-		snprintf(status_buf, sizeof(status_buf), "%s  (v=%llu a=%llu drop=%llu)", ctx->status,
-			 (unsigned long long)ctx->frames_ok, (unsigned long long)ctx->audio_ok,
-			 (unsigned long long)ctx->frames_drop);
-		snprintf(host_buf, sizeof(host_buf), "%s:%d", ctx->lan_ip, ctx->port);
-		pthread_mutex_unlock(&ctx->mutex);
-	}
-
 	obs_properties_add_text(props, "host_info", obs_module_text("HostInfo"), OBS_TEXT_INFO);
-	obs_property_t *st = obs_properties_add_text(props, "status_info", obs_module_text("Status"), OBS_TEXT_INFO);
-	UNUSED_PARAMETER(st);
+	obs_properties_add_text(props, "status_info", obs_module_text("Status"), OBS_TEXT_INFO);
 
-	/* Seed info fields via defaults path — OBS TEXT_INFO shows the setting string. */
 	obs_properties_add_button(props, "refresh_lan", obs_module_text("RefreshLan"), mah_refresh_clicked);
 	obs_properties_add_button(props, "regen_pair", obs_module_text("RegenPairing"), mah_regen_clicked);
 
 	mah_show_status(props, NULL, ctx);
-	UNUSED_PARAMETER(host_buf);
-	UNUSED_PARAMETER(status_buf);
-
 	return props;
 }
 
@@ -799,9 +886,13 @@ static void mah_defaults(obs_data_t *settings)
 {
 	obs_data_set_default_int(settings, "transport", MAH_TRANSPORT_WIFI);
 	obs_data_set_default_int(settings, "port", MAH_DEFAULT_PORT);
+	obs_data_set_default_int(settings, "web_port", MAH_DEFAULT_WEB_PORT);
 	obs_data_set_default_string(settings, "pairing", "MAH1");
 	obs_data_set_default_string(settings, "resolution", "1280x720");
-	obs_data_set_default_string(settings, "host_info", "Add source → note IP + pairing → open MAH Cam on phone");
+	obs_data_set_default_string(settings, "phone_url",
+				    "Add source → open Phone URL on phone → Allow camera");
+	obs_data_set_default_string(settings, "host_info",
+				    "Best: phone browser (no app). Native MAH Cam optional (TCP 28887).");
 	obs_data_set_default_string(settings, "status_info", "Idle");
 }
 
@@ -823,7 +914,7 @@ static struct obs_source_info mah_mobile_cam_info = {
 bool obs_module_load(void)
 {
 	obs_register_source(&mah_mobile_cam_info);
-	blog(LOG_INFO, "[mah-mobile-cam] loaded — MAH1 MJPEG+PCM + UDP discovery");
+	blog(LOG_INFO, "[mah-mobile-cam] loaded — web companion + MAH1 TCP + UDP discovery");
 	return true;
 }
 

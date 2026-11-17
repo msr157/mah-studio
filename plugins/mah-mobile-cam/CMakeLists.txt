@@ -3,7 +3,16 @@ cmake_minimum_required(VERSION 3.28...3.30)
 add_library(mah-mobile-cam MODULE)
 add_library(OBS::mah-mobile-cam ALIAS mah-mobile-cam)
 
-target_sources(mah-mobile-cam PRIVATE mah-mobile-cam.c mah-h264.c mah-h264.h stb_image.h)
+target_sources(
+  mah-mobile-cam
+  PRIVATE
+    mah-mobile-cam.c
+    mah-web.c
+    mah-web.h
+    mah-h264.c
+    mah-h264.h
+    stb_image.h
+)
 
 find_package(FFmpeg 8.0 COMPONENTS avcodec avutil)
 if(FFmpeg_FOUND)

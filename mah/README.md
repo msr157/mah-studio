@@ -11,5 +11,7 @@
 | [docks/](docks/) | Multichat help HTML |
 | [tools/mah-aoa-host/](tools/mah-aoa-host/) | AOA USB bridge |
 
-Plugins: `mah-mobile-cam`, `mah-multistream`, `mah-multichat`  
+Plugins: `mah-mobile-cam` (web companion on `:28889` + native TCP), `mah-multistream`, `mah-multichat`  
 Suite: https://github.com/msr157/mah-obs
+
+**Phone cam (best path):** add **MAH Mobile Camera** → open Phone URL on phone → Allow camera.
