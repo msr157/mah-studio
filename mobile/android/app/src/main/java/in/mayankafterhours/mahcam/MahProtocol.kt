@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets
 
 /**
  * MAH1 client — see mah/PROTOCOL.md in mah-studio.
- * Media: [u8 'V'|'A'][u32be len][payload]
+ * Media: [u8 'V'|'H'|'A'][u32be len][payload]
  */
 class MahProtocol(
     private val host: String,
@@ -22,6 +22,7 @@ class MahProtocol(
     private val width: Int,
     private val height: Int,
     private val withAudio: Boolean = true,
+    private val useH264: Boolean = false,
 ) : AutoCloseable {
 
     private var socket: Socket? = null
@@ -35,7 +36,12 @@ class MahProtocol(
         val o = BufferedOutputStream(s.getOutputStream())
         val i = BufferedInputStream(s.getInputStream())
 
-        val codec = if (withAudio) "mjpeg+pcm" else "mjpeg"
+        val codec = when {
+            useH264 && withAudio -> "h264+pcm"
+            useH264 -> "h264"
+            withAudio -> "mjpeg+pcm"
+            else -> "mjpeg"
+        }
         val hello = "MAH1 $pairing ${width}x${height} $codec\n"
         o.write(hello.toByteArray(StandardCharsets.UTF_8))
         o.flush()
@@ -51,6 +57,8 @@ class MahProtocol(
     }
 
     fun sendJpeg(jpeg: ByteArray) = sendTyped('V'.code, jpeg)
+
+    fun sendH264(annexB: ByteArray) = sendTyped('H'.code, annexB)
 
     fun sendPcm(pcm: ByteArray) = sendTyped('A'.code, pcm)
 

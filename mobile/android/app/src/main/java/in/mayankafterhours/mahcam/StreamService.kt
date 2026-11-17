@@ -49,6 +49,8 @@ class StreamService : Service(), LifecycleOwner {
     private val streaming = AtomicBoolean(false)
 
     private var protocol: MahProtocol? = null
+    private var h264: H264Encoder? = null
+    private var useH264 = false
     private var audioRecord: AudioRecord? = null
     private var audioJob: Job? = null
     private var lastSentNs = 0L
@@ -76,6 +78,7 @@ class StreamService : Service(), LifecycleOwner {
                 val pairing = intent.getStringExtra(EXTRA_PAIRING) ?: "MAH1"
                 width = intent.getIntExtra(EXTRA_WIDTH, 1280)
                 height = intent.getIntExtra(EXTRA_HEIGHT, 720)
+                useH264 = intent.getBooleanExtra(EXTRA_H264, false)
                 startForeground(NOTIF_ID, buildNotification("Connecting to $host:$port…"))
                 lifecycleRegistry.currentState = Lifecycle.State.STARTED
                 scope.launch { startStream(host, port, pairing) }
@@ -87,10 +90,22 @@ class StreamService : Service(), LifecycleOwner {
     private suspend fun startStream(host: String, port: Int, pairing: String) {
         if (!streaming.compareAndSet(false, true)) return
         try {
-            val client = MahProtocol(host, port, pairing, width, height, withAudio = true)
+            val client = MahProtocol(host, port, pairing, width, height, withAudio = true, useH264 = useH264)
             client.connect()
             protocol = client
-            broadcastStatus("Connected — video + mic")
+            if (useH264) {
+                val enc = H264Encoder(width, height, fps = targetFps)
+                if (enc.start()) {
+                    h264 = enc
+                    broadcastStatus("Connected — H.264 + mic")
+                } else {
+                    enc.close()
+                    useH264 = false
+                    broadcastStatus("H.264 failed — falling back needs reconnect as MJPEG")
+                }
+            } else {
+                broadcastStatus("Connected — MJPEG + mic")
+            }
             updateNotification("Streaming to $host:$port")
             startMic()
             bindCamera()
@@ -175,9 +190,15 @@ class StreamService : Service(), LifecycleOwner {
             if (now - lastSentNs < minGap) return
             lastSentNs = now
 
-            val jpeg = imageProxyToJpeg(image, jpegQuality) ?: return
             try {
-                protocol?.sendJpeg(jpeg)
+                if (useH264 && h264 != null) {
+                    val nv21 = imageProxyToNv21(image) ?: return
+                    val aus = h264!!.encodeNv21(nv21, now / 1000)
+                    for (au in aus) protocol?.sendH264(au)
+                } else {
+                    val jpeg = imageProxyToJpeg(image, jpegQuality) ?: return
+                    protocol?.sendJpeg(jpeg)
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "send failed", e)
                 broadcastStatus("Disconnected: ${e.message}")
@@ -203,6 +224,8 @@ class StreamService : Service(), LifecycleOwner {
             ProcessCameraProvider.getInstance(this).get().unbindAll()
         } catch (_: Exception) {
         }
+        h264?.close()
+        h264 = null
         protocol?.close()
         protocol = null
         broadcastStatus("Stopped")
@@ -269,9 +292,18 @@ class StreamService : Service(), LifecycleOwner {
         const val EXTRA_PAIRING = "pairing"
         const val EXTRA_WIDTH = "width"
         const val EXTRA_HEIGHT = "height"
+        const val EXTRA_H264 = "h264"
         const val EXTRA_STATUS = "status"
 
-        fun start(ctx: Context, host: String, port: Int, pairing: String, w: Int = 1280, h: Int = 720) {
+        fun start(
+            ctx: Context,
+            host: String,
+            port: Int,
+            pairing: String,
+            w: Int = 1280,
+            h: Int = 720,
+            h264: Boolean = false,
+        ) {
             val i = Intent(ctx, StreamService::class.java).apply {
                 action = ACTION_START
                 putExtra(EXTRA_HOST, host)
@@ -279,6 +311,7 @@ class StreamService : Service(), LifecycleOwner {
                 putExtra(EXTRA_PAIRING, pairing)
                 putExtra(EXTRA_WIDTH, w)
                 putExtra(EXTRA_HEIGHT, h)
+                putExtra(EXTRA_H264, h264)
             }
             ContextCompat.startForegroundService(ctx, i)
         }
@@ -289,8 +322,7 @@ class StreamService : Service(), LifecycleOwner {
     }
 }
 
-/** NV21 → JPEG, with rotation applied. */
-private fun imageProxyToJpeg(image: ImageProxy, quality: Int): ByteArray? {
+private fun imageProxyToNv21(image: ImageProxy): ByteArray? {
     val yBuffer = image.planes[0].buffer
     val uBuffer = image.planes[1].buffer
     val vBuffer = image.planes[2].buffer
@@ -301,6 +333,12 @@ private fun imageProxyToJpeg(image: ImageProxy, quality: Int): ByteArray? {
     yBuffer.get(nv21, 0, ySize)
     vBuffer.get(nv21, ySize, vSize)
     uBuffer.get(nv21, ySize + vSize, uSize)
+    return nv21
+}
+
+/** NV21 → JPEG, with rotation applied. */
+private fun imageProxyToJpeg(image: ImageProxy, quality: Int): ByteArray? {
+    val nv21 = imageProxyToNv21(image) ?: return null
 
     val yuv = YuvImage(nv21, ImageFormat.NV21, image.width, image.height, null)
     val baos = ByteArrayOutputStream()

@@ -100,12 +100,15 @@ We **cannot** publish to stores without your accounts. We **can** ship build scr
 3. iOS archive instructions + TestFlight checklist  
 4. Store listing copy draft  
 
-### Phase D — Product polish
+### Phase D — Product polish (landed in mah/v3-polish)
 
-1. Phone H.264 encode option  
-2. QR pairing  
-3. Layout preset apply from onboarding  
-4. Windows CI build of mah plugins  
+1. [x] Phone H.264 encode option (Android MediaCodec)  
+2. [x] QR pairing in MahOnboarding (`mah1://ip:port/code`)  
+3. [x] Layout preset apply (`mah/presets` + onboarding button + PS1)  
+4. [x] Gradle wrapper + Android CI assemble  
+5. [x] Installer / update-manifest stubs  
+6. [x] RackOps Focus Room preset JSON  
+7. [ ] Windows CI build of full OBS + plugins (heavy)  
 
 ---
 

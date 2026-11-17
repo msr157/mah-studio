@@ -148,9 +148,10 @@ class MainActivity : AppCompatActivity() {
             .putString("pairing", pairing)
             .apply()
 
-        StreamService.start(this, host, port, pairing)
+        val h264 = binding.useH264.isChecked
+        StreamService.start(this, host, port, pairing, h264 = h264)
         streaming = true
         binding.toggle.text = getString(R.string.stop_stream)
-        binding.status.text = "Starting…"
+        binding.status.text = if (h264) "Starting H.264…" else "Starting MJPEG…"
     }
 }
