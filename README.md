@@ -1,6 +1,8 @@
 # MAH Studio
 
-**Mayank After Hours Studio** — fork of [OBS Studio](https://github.com/obsproject/obs-studio).
+**Mayank After Hours Studio** — historical fork of [OBS Studio](https://github.com/obsproject/obs-studio).
+
+> **Product shipping:** [mah-obs](https://github.com/msr157/mah-obs) + **stock OBS**. Fork CI/builds here are **not** maintained for the live MAH product (phone cam, multistream suite). Sources remain for reference and mobile companions.
 
 ## Modules
 

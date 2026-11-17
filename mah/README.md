@@ -1,5 +1,7 @@
 # MAH product docs
 
+**Shipping target:** [mah-obs](https://github.com/msr157/mah-obs) on stock OBS — not in-tree `mah-studio` builds. Phone cam plugin lives in `mah-obs/plugins/mah-mobile-cam/`.
+
 | Doc | Purpose |
 |---|---|
 | [PLAN.md](PLAN.md) | Research + sequenced work (read first) |
