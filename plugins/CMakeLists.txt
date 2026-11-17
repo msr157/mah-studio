@@ -84,6 +84,8 @@ add_core_module(mac-syphon PLATFORMS MACOS)
 add_core_module(mac-videotoolbox PLATFORMS MACOS)
 add_core_module(mac-virtualcam PLATFORMS MACOS)
 add_core_module(mah-mobile-cam PLATFORMS WINDOWS LINUX MACOS)
+add_core_module(mah-multistream PLATFORMS WINDOWS LINUX MACOS)
+add_core_module(mah-multichat PLATFORMS WINDOWS LINUX MACOS)
 add_core_module(nv-filters PLATFORMS WINDOWS)
 
 check_obs_browser()

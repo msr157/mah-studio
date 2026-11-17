@@ -1,4 +1,4 @@
-# MAH Mobile Camera protocol (v1.1)
+# MAH Mobile Camera protocol (v1.2)
 
 Companion app (Android / iOS / test client) → MAH Studio `mah_mobile_cam` source.
 
@@ -7,21 +7,17 @@ Companion app (Android / iOS / test client) → MAH Studio `mah_mobile_cam` sour
 | Mode | Path |
 |---|---|
 | Wi‑Fi | TCP to desktop LAN IP, default port `28887` |
-| USB tether | Same TCP — enable USB tethering; use the PC IP shown in the source |
-| USB AOA / usbmux | Planned — same framing over accessory / port-forward |
+| USB tether | Same TCP — Android USB tethering / phone hotspot edge |
+| iOS usbmux | `mobile/tools/ios-usbmux-forward.*` → same TCP on forwarded port |
+| AOA | Planned — same framing over Android Open Accessory |
 
-## Discovery (optional)
+## Discovery
 
-UDP broadcast to port `28888`:
+UDP `28888`:
 
 ```text
 MAH1 DISCOVER\n
-```
-
-Desktop replies:
-
-```text
-MAH1 HOST <ip> <tcp-port> <pairing>\n
+→ MAH1 HOST <ip> <tcp-port> <pairing>\n
 ```
 
 ## Handshake
@@ -30,30 +26,16 @@ MAH1 HOST <ip> <tcp-port> <pairing>\n
 MAH1 <pairing> <width>x<height> <codec>\n
 ```
 
-Codecs:
-
 | Codec | Meaning |
 |---|---|
-| `mjpeg` | Video only |
-| `mjpeg+pcm` | Video + mic (PCM s16le mono 48 kHz) |
+| `mjpeg` | JPEG video |
+| `mjpeg+pcm` | JPEG + mic PCM |
+| `h264` | H.264 Annex-B video (needs FFmpeg at build) |
+| `h264+pcm` | H.264 + mic PCM |
 
-Example:
+Server: `MAH1 OK\n` or `MAH1 ERR <reason>`.
 
-```text
-MAH1 MAH1 1280x720 mjpeg+pcm\n
-```
-
-Server:
-
-```text
-MAH1 OK\n
-```
-
-or `MAH1 ERR <reason>` (`bad-handshake`, `bad-pairing`, `codec-unsupported`).
-
-## Media (v1.1)
-
-Typed frames (preferred):
+## Media
 
 ```text
 [uint8 type][uint32_be length][payload]
@@ -61,21 +43,8 @@ Typed frames (preferred):
 
 | type | payload |
 |---|---|
-| `'V'` | JPEG bytes |
+| `'V'` | JPEG |
+| `'H'` | H.264 Annex-B access unit |
 | `'A'` | PCM s16le mono @ 48000 Hz |
 
-Legacy v1 (length-prefixed JPEG with no type byte) is still accepted by the desktop plugin.
-
-### `h264` (reserved)
-
-Annex-B access units — not accepted until decoder lands.
-
-## Security
-
-- Pairing code required (source properties; regenerate button)
-- LAN trusted-ish; v2 optional TLS / QR token
-
-## Non-goals
-
-- DRM camera bypass
-- Silent capture without OS permission UI
+Legacy length-prefixed JPEG (no type byte) still accepted.

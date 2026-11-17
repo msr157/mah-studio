@@ -2,43 +2,27 @@
 
 ## v0 — Foundation
 
-- [x] Public fork `msr157/mah-studio` from OBS Studio
-- [x] `plugins/mah-mobile-cam` scaffold
-- [x] Protocol draft + mobile stubs
-- [x] Product docs + companion suite link (`mah-obs`)
+- [x] Public fork + docs + mobile scaffolds
 
-## v1 — Usable mobile cam
+## v1 — Mobile cam
 
-- [x] Desktop: MAH1 handshake + pairing + UDP discovery
-- [x] Desktop: MJPEG ingest → OBS async video
-- [x] Desktop: phone mic PCM → OBS audio (`mjpeg+pcm`)
-- [x] Wi‑Fi + USB-tether modes (same TCP)
-- [x] Android companion (CameraX + mic + discover)
-- [x] iOS companion sources + XcodeGen `project.yml`
-- [x] Python test client
-- [x] Starter dock + multichat help dock HTML
-- [x] First-run **MahOnboarding** Qt wizard (hooked before AutoConfig)
-- [ ] Signed Play / TestFlight builds
-- [ ] H.264 Annex-B decode path
-- [ ] Native AOA / usbmux accessory tunnel
+- [x] MJPEG + PCM, discovery, Wi‑Fi/USB tether
+- [x] Android / iOS companions + test client
+- [x] Starter + multichat help docks
+- [x] First-run MahOnboarding wizard
 
-## v1.5 — Onboarding polish
+## v2 — This push
 
-- [x] Starter page dock (`mah/starter`)
-- [ ] QR pairing on wizard page
-- [ ] Apply loved dock preset from `mah-obs` automatically
-- [ ] Hinglish string table
-
-## v2 — Multistream + Multichat native
-
-- [ ] In-tree Multistream dock (obs-multi-rtmp branded)
-- [ ] Multichat dock: Twitch + YouTube + Kick
-- [ ] “Send to selected platforms” toggles
-- [x] Interim: `mah/docks` + [mah-obs](https://github.com/msr157/mah-obs) suite
+- [x] H.264 Annex-B decode path (`mah-h264`, FFmpeg when available)
+- [x] In-tree **MAH Multistream** dock (`plugins/mah-multistream`, obs-multi-rtmp based)
+- [x] In-tree **MAH Multichat** dock (Twitch IRC + YT/Kick helpers)
+- [x] USB helpers (tether notes, iOS usbmux forward scripts)
+- [ ] Signed Play / TestFlight
+- [ ] YouTube Live Chat API + Kick WS in multichat
+- [ ] Native AOA accessory socket
 
 ## v3 — Polish
 
-- [ ] Auto-update channel for MAH builds
-- [ ] Signed Windows installer
+- [ ] Auto-update + signed Windows installer
 - [ ] Vertical / dual-format helpers
-- [ ] RackOps Focus Room relay presets
+- [ ] RackOps Focus Room presets

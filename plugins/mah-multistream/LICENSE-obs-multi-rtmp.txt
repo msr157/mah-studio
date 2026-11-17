@@ -1,0 +1,4 @@
+The multistream dock incorporates source derived from obs-multi-rtmp
+https://github.com/sorayuki/obs-multi-rtmp
+Copyright (C) SoraYuki / 雷鳴
+Licensed under the GNU General Public License v2.0 (or later), same as OBS Studio.
