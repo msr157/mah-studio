@@ -13,6 +13,12 @@ target_sources(
     MahMultichatDock.hpp
     TwitchIrcClient.cpp
     TwitchIrcClient.hpp
+    KickChatClient.cpp
+    KickChatClient.hpp
+    YouTubeLiveChatClient.cpp
+    YouTubeLiveChatClient.hpp
+    MiniWebSocket.cpp
+    MiniWebSocket.hpp
 )
 
 target_link_libraries(
