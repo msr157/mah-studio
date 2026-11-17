@@ -1,13 +1,15 @@
-# Mayank After Hours Studio product docs
+# MAH product docs
 
 | Doc | Purpose |
 |---|---|
-| [PROTOCOL.md](PROTOCOL.md) | Phone ↔ desktop MAH1 framing |
-| [ROADMAP.md](ROADMAP.md) | Honest milestone checklist |
-| [ONBOARDING.md](ONBOARDING.md) | First-run wizard + docks |
-| [starter/](starter/) | Starting-soon browser dock |
-| [docks/](docks/) | Multichat help + dock notes |
+| [PLAN.md](PLAN.md) | Research + sequenced work (read first) |
+| [PROTOCOL.md](PROTOCOL.md) | MAH1 phone ↔ desktop |
+| [ROADMAP.md](ROADMAP.md) | Checklist |
+| [ONBOARDING.md](ONBOARDING.md) | First-run wizard |
+| [STORE_CHECKLIST.md](STORE_CHECKLIST.md) | Play / TestFlight |
+| [starter/](starter/) | Starting-soon dock |
+| [docks/](docks/) | Multichat help HTML |
+| [tools/mah-aoa-host/](tools/mah-aoa-host/) | AOA USB bridge |
 
-Plugin: `plugins/mah-mobile-cam`  
-Apps: `mobile/android`, `mobile/ios`  
+Plugins: `mah-mobile-cam`, `mah-multistream`, `mah-multichat`  
 Suite: https://github.com/msr157/mah-obs

@@ -9,7 +9,7 @@ Companion app (Android / iOS / test client) → MAH Studio `mah_mobile_cam` sour
 | Wi‑Fi | TCP to desktop LAN IP, default port `28887` |
 | USB tether | Same TCP — Android USB tethering / phone hotspot edge |
 | iOS usbmux | `mobile/tools/ios-usbmux-forward.*` → same TCP on forwarded port |
-| AOA | Planned — same framing over Android Open Accessory |
+| AOA | PC `mah/tools/mah-aoa-host` bridges USB bulk ↔ TCP; phone `AoaSession` speaks MAH1 |
 
 ## Discovery
 

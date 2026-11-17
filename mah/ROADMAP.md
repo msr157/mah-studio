@@ -1,28 +1,26 @@
 # MAH Studio roadmap
 
-## v0 — Foundation
+## Done
 
-- [x] Public fork + docs + mobile scaffolds
+- [x] Fork + mobile cam (MJPEG/H.264/PCM) + discovery
+- [x] Android / iOS companions + USB tether
+- [x] MahOnboarding wizard + starter docks
+- [x] MAH Multistream (obs-multi-rtmp based)
+- [x] MAH Multichat — Twitch IRC + **YouTube Live Chat API** + **Kick Pusher read**
+- [x] Unified feed + send-to toggles (Kick send → open Kick)
+- [x] AOA: Android `AoaSession` + PC `mah/tools/mah-aoa-host` bridge
+- [x] Research plan: `mah/PLAN.md`
+- [x] Store checklist + Android CI stub
 
-## v1 — Mobile cam
+## Next (needs you / polish)
 
-- [x] MJPEG + PCM, discovery, Wi‑Fi/USB tether
-- [x] Android / iOS companions + test client
-- [x] Starter + multichat help docks
-- [x] First-run MahOnboarding wizard
-
-## v2 — This push
-
-- [x] H.264 Annex-B decode path (`mah-h264`, FFmpeg when available)
-- [x] In-tree **MAH Multistream** dock (`plugins/mah-multistream`, obs-multi-rtmp based)
-- [x] In-tree **MAH Multichat** dock (Twitch IRC + YT/Kick helpers)
-- [x] USB helpers (tether notes, iOS usbmux forward scripts)
-- [ ] Signed Play / TestFlight
-- [ ] YouTube Live Chat API + Kick WS in multichat
-- [ ] Native AOA accessory socket
-
-## v3 — Polish
-
-- [ ] Auto-update + signed Windows installer
-- [ ] Vertical / dual-format helpers
+- [ ] Google API key + OAuth for live YT send test
+- [ ] Play / TestFlight publish (accounts + signing)
+- [ ] Gradle wrapper JAR committed for CI assemble
+- [ ] Phone-side H.264 encode (MediaCodec)
+- [ ] QR pairing in onboarding
+- [ ] Auto-apply mah-obs layout preset
+- [ ] Kick official send if/when API exists
+- [ ] Native WinUSB AOA host (replace Python helper)
+- [ ] Signed Windows MAH installer + auto-update
 - [ ] RackOps Focus Room presets
