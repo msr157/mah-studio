@@ -1,25 +1,32 @@
-# MAH Cam — Android companion
+# MAH Cam — Android
 
-Streams the phone camera to **MAH Studio** (`mah_mobile_cam` source) over Wi‑Fi or USB.
+Streams the phone camera to **MAH Studio** (`mah_mobile_cam`) over Wi‑Fi or USB tether.
 
-## Status
+## Features (v1)
 
-Scaffold only. Target stack:
-
-- Kotlin + CameraX
+- CameraX preview + ImageAnalysis → JPEG
+- MAH1 TCP handshake + length-prefixed MJPEG
+- LAN discovery (UDP broadcast)
 - Foreground service while streaming
-- TCP client implementing `mah/PROTOCOL.md`
-- QR / pairing code UI
-- USB: prefer Wi‑Fi over USB tether first; AOA later
+- Pairing code
 
-## Dev sketch
+## Open in Android Studio
 
-```text
-app/
-  src/main/java/in/rackops/mahcam/
-    MainActivity.kt
-    StreamService.kt
-    MahProtocol.kt
-```
+1. Open `mobile/android` as a Gradle project.
+2. Let AGP sync (SDK 35).
+3. Run on a device on the **same Wi‑Fi** as the PC (or enable **USB tethering** and use the PC’s tether IP).
 
-Package id proposal: `in.mayankafterhours.mahcam`
+## Pairing flow
+
+1. Build & run MAH Studio with `mah-mobile-cam`.
+2. Add source **MAH Mobile Camera** — note **LAN IP**, **port** (`28887`), **pairing**.
+3. On phone: tap **Find MAH Studio on LAN**, or type IP + pairing.
+4. **Start camera stream**.
+
+## USB
+
+Enable USB tethering on Android. PC gets an interface (often `192.168.42.x` / `192.168.137.x`). Put that PC IP in the app — protocol is identical to Wi‑Fi.
+
+## Package
+
+`in.mayankafterhours.mahcam`

@@ -7,7 +7,11 @@ target_sources(mah-mobile-cam PRIVATE mah-mobile-cam.c)
 
 target_link_libraries(
   mah-mobile-cam
-  PRIVATE OBS::libobs $<$<PLATFORM_ID:Windows>:OBS::w32-pthreads> $<$<PLATFORM_ID:Windows>:ws2_32>
+  PRIVATE
+    OBS::libobs
+    $<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>
+    $<$<PLATFORM_ID:Windows>:ws2_32>
+    $<$<PLATFORM_ID:Windows>:iphlpapi>
 )
 
 if(OS_WINDOWS)

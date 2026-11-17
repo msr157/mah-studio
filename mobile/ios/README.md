@@ -1,16 +1,30 @@
-# MAH Cam — iOS companion
+# MAH Cam — iOS
 
-Streams the iPhone/iPad camera to **MAH Studio** over Wi‑Fi (USB via usbmux port-forward later).
+Streams iPhone / iPad camera to **MAH Studio** over Wi‑Fi (USB tether / usbmux later).
 
-## Status
+## Features (v1)
 
-Scaffold only. Target stack:
+- AVFoundation capture → JPEG
+- MAH1 TCP + MJPEG framing
+- LAN UDP discovery
+- Pairing code
+- SwiftUI shell (`MAHCam/`)
 
-- SwiftUI + AVFoundation
-- Background mode: `audio` / VoIP-adjacent patterns only where App Store allows; prefer foreground streaming
-- TCP client implementing `mah/PROTOCOL.md`
-- Local Network permission + Bonjour discovery (optional)
+## Open in Xcode
 
-## Note vs Iriun
+1. File → New → Project → App (SwiftUI, iOS 16+).
+2. Replace / add sources from `MAHCam/`:
+   - `MAHCamApp.swift`
+   - `ContentView.swift`
+   - `MahProtocol.swift`
+   - `CameraStreamer.swift`
+   - Merge keys from `Info.plist` (camera + local network).
+3. Run on a physical device (simulator has no useful camera for this).
 
-Iriun installs a desktop virtual camera driver. MAH Cam talks **directly to OBS** as a source plugin — fewer drivers, tighter integration, more work on the protocol side.
+## Pairing flow
+
+Same as Android: add **MAH Mobile Camera** in OBS → note IP / port / pairing → Find or type → Start.
+
+## vs Iriun
+
+Iriun uses a desktop virtual camera driver. MAH Cam talks **directly to OBS** as a source — fewer drivers, tighter integration.
