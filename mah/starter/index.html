@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MAH — Starting Soon</title>
+  <style>
+    :root {
+      --ground: #0a0d14;
+      --surface: #10141e;
+      --ink: #f8fafc;
+      --muted: #94a3b8;
+      --amber: #e5b875;
+      --line: rgba(255, 255, 255, 0.08);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; height: 100%;
+      background: radial-gradient(120% 80% at 50% -10%, #1a2030 0%, var(--ground) 55%);
+      color: var(--ink);
+      font-family: "Segoe UI", system-ui, sans-serif;
+    }
+    .wrap {
+      min-height: 100%;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      text-align: center;
+    }
+    .brand {
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      letter-spacing: 0.14em;
+      font-weight: 700;
+      color: var(--amber);
+      margin: 0 0 8px;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 14px;
+      max-width: 36rem;
+      margin: 0 auto 28px;
+      line-height: 1.5;
+    }
+    .steps {
+      text-align: left;
+      max-width: 28rem;
+      margin: 0 auto;
+      padding: 16px 18px;
+      background: color-mix(in srgb, var(--surface) 88%, transparent);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      backdrop-filter: blur(16px);
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .steps li { margin: 8px 0; }
+    .steps strong { color: var(--ink); font-weight: 600; }
+    .pulse {
+      width: 64px; height: 4px; margin: 0 auto 20px;
+      background: var(--amber);
+      border-radius: 2px;
+      animation: pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.35; transform: scaleX(0.7); }
+      50% { opacity: 1; transform: scaleX(1); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .pulse { animation: none; opacity: 0.8; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div>
+      <p class="brand">MAYANK AFTER HOURS</p>
+      <div class="pulse" aria-hidden="true"></div>
+      <p class="sub">Starter dock for MAH Studio — phone cam, multistream, chat docks.</p>
+      <ol class="steps">
+        <li><strong>Mobile cam</strong> — Add source “MAH Mobile Camera”, open MAH Cam on phone (Wi‑Fi or USB tether).</li>
+        <li><strong>Multistream</strong> — Use mah-obs Multiple output for YouTube + Twitch + Kick.</li>
+        <li><strong>Chat docks</strong> — View → Docks → Custom Browser Docks (Twitch / Kick / YouTube popouts).</li>
+        <li><strong>Lock</strong> — Docks → Lock Docks so the layout stays.</li>
+      </ol>
+    </div>
+  </div>
+</body>
+</html>

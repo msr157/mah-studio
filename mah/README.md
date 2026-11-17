@@ -1,42 +1,46 @@
 # Mayank After Hours Studio (`mah-studio`)
 
-This repository is a **fork of [OBS Studio](https://github.com/obsproject/obs-studio)** evolved into **MAH Studio** — a creator build focused on:
+Fork of [OBS Studio](https://github.com/obsproject/obs-studio) evolved into **MAH Studio**:
 
-- Multistream (YouTube + Twitch + Kick)
+- Multistream (YouTube + Twitch + Kick) via [mah-obs](https://github.com/msr157/mah-obs)
 - Operator docks / locked layouts
-- First-run onboarding wizard
-- **First-class mobile camera** (Android / iOS over Wi‑Fi or USB) — Iriun-class capability built in
+- First-run onboarding (spec → Qt next)
+- **First-class mobile camera** (Android / iOS over Wi‑Fi or USB tether)
 
-Upstream OBS remains the engine. MAH modules live under `plugins/mah-*`, `mah/`, and `mobile/`.
+## Status (honest)
 
-## Honest status
+| Area | Now |
+|---|---|
+| Fork | `msr157/mah-studio` |
+| Mobile source | `mah_mobile_cam` — MAH1 handshake, MJPEG decode, UDP discover, USB-tether mode |
+| Android | Full Gradle app under `mobile/android` (CameraX + FG service) |
+| iOS | Swift sources under `mobile/ios/MAHCam` (open in Xcode) |
+| Test without phone | `mobile/tools/mah_mjpeg_test_client.py` |
+| Onboarding wizard | Spec in `ONBOARDING.md` — Qt pages next |
+| Multistream | `mah-obs` suite today; in-tree dock later |
 
-| Area | Now | Next |
-|---|---|---|
-| Fork published | Yes — `msr157/mah-studio` | Track upstream OBS |
-| Mobile camera plugin | Source registered + TCP listen + placeholder frames | H.264/JPEG ingest, pairing UI, USB accessory |
-| Android / iOS apps | Project stubs + protocol draft | Ship companion APK/IPA |
-| Onboarding wizard | Spec + hook points documented | Qt pages wired into FirstRun |
-| Multistream | Bundled via [mah-obs](https://github.com/msr157/mah-obs) suite / multi-rtmp | Optional in-tree dock branding |
+## Quick test (desktop)
 
-Building a “best OBS” is a **product**, not a weekend paste. This fork is the honest foundation.
-
-## Companion suite
-
-Operator presets + installer (docks / layout lock / multi-rtmp):  
-https://github.com/msr157/mah-obs
-
-## Build (developer)
-
-Same as upstream OBS. See upstream docs, then enable `mah-mobile-cam` (on by default in this fork’s plugin list).
+1. Build OBS with `mah-mobile-cam` enabled.
+2. Add source **MAH Mobile Camera** (pairing default `MAH1`, port `28887`).
+3. On the same machine:
 
 ```bash
-# high level — follow OBS Windows build guide for deps
-cmake --preset windows-x64
-cmake --build --preset windows-x64
+pip install Pillow
+python mobile/tools/mah_mjpeg_test_client.py --host 127.0.0.1 --pairing MAH1
 ```
+
+You should see amber test frames in the source.
+
+## Phone
+
+See `mobile/android/README.md` and `mobile/ios/README.md`.  
+Protocol: `PROTOCOL.md`.
+
+## Build
+
+Same as upstream OBS. `mah-mobile-cam` is registered in `plugins/CMakeLists.txt`.
 
 ## License
 
-OBS Studio core: GPL-2.0 (upstream copyright retained).  
-MAH-authored files under `mah/`, `mobile/`, `plugins/mah-*`: GPL-2.0 to match the host (required for in-tree plugins).
+OBS core: GPL-2.0. MAH paths under `mah/`, `mobile/`, `plugins/mah-*`: GPL-2.0 to match in-tree plugins.

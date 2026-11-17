@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.MAHCam" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/mah_amber</item>
+        <item name="colorOnPrimary">@color/mah_ground</item>
+        <item name="android:statusBarColor">@color/mah_ground</item>
+        <item name="android:navigationBarColor">@color/mah_ground</item>
+        <item name="android:windowBackground">@color/mah_ground</item>
+    </style>
+</resources>

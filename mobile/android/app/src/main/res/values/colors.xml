@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="mah_ground">#0A0D14</color>
+    <color name="mah_surface">#10141E</color>
+    <color name="mah_ink">#F8FAFC</color>
+    <color name="mah_muted">#94A3B8</color>
+    <color name="mah_amber">#E5B875</color>
+    <color name="mah_line">#14FFFFFF</color>
+</resources>
