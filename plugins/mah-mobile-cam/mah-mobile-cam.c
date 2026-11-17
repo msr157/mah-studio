@@ -11,6 +11,8 @@
 #include <media-io/video-io.h>
 #include <media-io/audio-io.h>
 
+#include "mah-h264.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -89,6 +91,8 @@ struct mah_mobile_cam {
 	uint64_t frames_drop;
 	uint64_t audio_ok;
 	bool want_audio;
+	bool want_h264;
+	struct mah_h264_decoder *h264;
 };
 
 /* ---------- sockets helpers ---------- */
@@ -342,13 +346,32 @@ static bool mah_handle_client(struct mah_mobile_cam *ctx, mah_socket_t cfd)
 
 	const bool codec_mjpeg = (strcmp(codec, "mjpeg") == 0 || strcmp(codec, "MJPEG") == 0);
 	const bool codec_av = (strcmp(codec, "mjpeg+pcm") == 0);
-	if (!codec_mjpeg && !codec_av) {
+	const bool codec_h264 = (strcmp(codec, "h264") == 0);
+	const bool codec_h264a = (strcmp(codec, "h264+pcm") == 0);
+	if (!codec_mjpeg && !codec_av && !codec_h264 && !codec_h264a) {
 		const char *err = "MAH1 ERR codec-unsupported\n";
 		mah_send_all(cfd, err, strlen(err));
-		mah_set_status(ctx, "Codec: mjpeg or mjpeg+pcm");
+		mah_set_status(ctx, "Codec: mjpeg[+pcm] or h264[+pcm]");
 		return false;
 	}
-	ctx->want_audio = codec_av;
+	if ((codec_h264 || codec_h264a) && !mah_h264_available()) {
+		const char *err = "MAH1 ERR codec-unsupported\n";
+		mah_send_all(cfd, err, strlen(err));
+		mah_set_status(ctx, "H.264 not built (need FFmpeg)");
+		return false;
+	}
+	ctx->want_audio = codec_av || codec_h264a;
+	ctx->want_h264 = codec_h264 || codec_h264a;
+	if (ctx->want_h264) {
+		mah_h264_destroy(ctx->h264);
+		ctx->h264 = mah_h264_create();
+		if (!ctx->h264) {
+			const char *err = "MAH1 ERR codec-unsupported\n";
+			mah_send_all(cfd, err, strlen(err));
+			mah_set_status(ctx, "H.264 decoder init failed");
+			return false;
+		}
+	}
 
 	unsigned rw = 0, rh = 0;
 	if (sscanf(res, "%ux%u", &rw, &rh) == 2 && rw > 0 && rh > 0) {
@@ -363,13 +386,16 @@ static bool mah_handle_client(struct mah_mobile_cam *ctx, mah_socket_t cfd)
 		return false;
 
 	ctx->connected = true;
-	mah_set_status(ctx, codec_av ? "Connected — video+mic" : "Connected — MJPEG");
+	if (ctx->want_h264)
+		mah_set_status(ctx, ctx->want_audio ? "Connected — H.264+mic" : "Connected — H.264");
+	else
+		mah_set_status(ctx, ctx->want_audio ? "Connected — MJPEG+mic" : "Connected — MJPEG");
 
 	/*
-	 * Media frames (v1.1):
-	 *   [uint8 type 'V'|'A'][uint32_be length][payload]
-	 * Legacy v1 (length-prefixed JPEG only) still accepted: if the first
-	 * byte is not V/A, treat the next 3 bytes + this as a big-endian length.
+	 * Media frames (v1.1+):
+	 *   [uint8 type 'V'|'H'|'A'][uint32_be length][payload]
+	 * V=JPEG, H=H.264 Annex-B AU, A=PCM s16le mono 48k
+	 * Legacy v1 (length-prefixed JPEG only) still accepted.
 	 */
 	uint8_t *payload = NULL;
 	size_t payload_cap = 0;
@@ -380,7 +406,7 @@ static bool mah_handle_client(struct mah_mobile_cam *ctx, mah_socket_t cfd)
 			break;
 
 		uint32_t plen = 0;
-		if (type == 'V' || type == 'A') {
+		if (type == 'V' || type == 'H' || type == 'A') {
 			uint8_t lenbuf[4];
 			if (!mah_recv_exact(cfd, lenbuf, 4))
 				break;
@@ -408,10 +434,16 @@ static bool mah_handle_client(struct mah_mobile_cam *ctx, mah_socket_t cfd)
 		if (!mah_recv_exact(cfd, payload, plen))
 			break;
 
-		if (type == 'A')
+		if (type == 'A') {
 			mah_output_pcm(ctx, payload, plen);
-		else
+		} else if (type == 'H') {
+			if (mah_h264_decode(ctx->h264, payload, plen, ctx->source))
+				ctx->frames_ok++;
+			else
+				ctx->frames_drop++;
+		} else {
 			mah_decode_jpeg_to_obs(ctx, payload, plen);
+		}
 	}
 
 	bfree(payload);
@@ -625,6 +657,8 @@ static void mah_destroy(void *data)
 {
 	struct mah_mobile_cam *ctx = data;
 	mah_stop(ctx);
+	mah_h264_destroy(ctx->h264);
+	ctx->h264 = NULL;
 	obs_source_output_video(ctx->source, NULL);
 	pthread_mutex_destroy(&ctx->mutex);
 	bfree(ctx);

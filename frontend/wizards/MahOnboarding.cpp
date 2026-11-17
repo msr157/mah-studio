@@ -58,11 +58,10 @@ MahOnboarding::MahOnboarding(QWidget *parent) : QWizard(parent)
 		QStringLiteral("Multistream + chat"),
 		QStringLiteral(
 			"<p>OBS <b>Settings → Stream</b> is always one destination. That is normal.</p>"
-			"<p>Use the free <b>Multiple Output</b> dock from "
-			"<a href='https://github.com/msr157/mah-obs'>mah-obs</a> "
-			"(obs-multi-rtmp) — three Custom RTMP targets for YouTube, Twitch, Kick.</p>"
-			"<p>Chat: Custom Browser Docks with official popouts. Help dock HTML lives in "
-			"<code>mah/docks/</code>. Then <b>Docks → Lock Docks</b>.</p>")));
+			"<p>Open the <b>MAH Multistream</b> dock — add YouTube / Twitch / Kick Custom RTMP "
+			"targets (based on obs-multi-rtmp).</p>"
+			"<p>Chat: <b>MAH Multichat</b> dock (Twitch IRC) plus optional browser popouts for "
+			"YouTube / Kick. Then <b>Docks → Lock Docks</b>.</p>")));
 
 	auto *done = makePage(
 		QStringLiteral("You're set"),

@@ -3,7 +3,16 @@ cmake_minimum_required(VERSION 3.28...3.30)
 add_library(mah-mobile-cam MODULE)
 add_library(OBS::mah-mobile-cam ALIAS mah-mobile-cam)
 
-target_sources(mah-mobile-cam PRIVATE mah-mobile-cam.c)
+target_sources(mah-mobile-cam PRIVATE mah-mobile-cam.c mah-h264.c mah-h264.h stb_image.h)
+
+find_package(FFmpeg 8.0 COMPONENTS avcodec avutil)
+if(FFmpeg_FOUND)
+  target_compile_definitions(mah-mobile-cam PRIVATE MAH_HAVE_FFMPEG=1)
+  target_link_libraries(mah-mobile-cam PRIVATE FFmpeg::avcodec FFmpeg::avutil)
+  message(STATUS "mah-mobile-cam: H.264 decode enabled (FFmpeg)")
+else()
+  message(STATUS "mah-mobile-cam: H.264 decode disabled (FFmpeg not found; MJPEG still works)")
+endif()
 
 target_link_libraries(
   mah-mobile-cam
